@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Priest Viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #6f8f6a; font-family: system-ui, sans-serif; color: #f4efe2; }
+  #ui { position: fixed; top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; text-shadow: 0 1px 2px #000; }
+  select, button { font: inherit; padding: 4px 8px; }
+  #info { width: 100%; font-size: 13px; opacity: .9; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="ui">
+  <select id="model"></select>
+  <select id="clip"></select>
+  <select id="speed"><option>0.25</option><option>0.5</option><option selected>1</option></select>
+  <button id="kit">Away kit: off</button>
+  <div id="info"></div>
+</div>
+<script type="module">
+// Model viewer for review: viewer.html?model=giorgis&clip=run&speed=0.5&t=0.3&kit=away&view=front|side|back|q34
+// With t= the animation is frozen at that time in seconds (useful for headless screenshots).
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ROSTER } from './src/config.js';
+
+const q = new URLSearchParams(location.search);
+const ids = [...ROSTER.map((r) => r.id), 'patriarch'];
+const $ = (id) => document.getElementById(id);
+for (const id of ids) $('model').add(new Option(id, id));
+$('model').value = q.get('model') || 'giorgis';
+$('speed').value = q.get('speed') || '1';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8aa7c0);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.95, 0);
+const views = { front: [0, 1.4, 4.2], side: [4.2, 1.4, 0], back: [0, 1.4, -4.2], q34: [3, 1.8, 3] };
+camera.position.set(...(views[q.get('view')] || views.q34));
+scene.add(new THREE.HemisphereLight(0xe8f0ff, 0x3a5a30, 1.0));
+const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
+sun.position.set(-3, 6, 4); sun.castShadow = true; scene.add(sun);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(4, 48), new THREE.MeshStandardMaterial({ color: 0x4f9a46 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+// 1 m grid ticks for judging stride and slide
+const grid = new THREE.GridHelper(8, 16, 0xffffff, 0xffffff); grid.material.opacity = 0.15; grid.material.transparent = true; scene.add(grid);
+
+let mixer = null, actions = {}, model = null, gltfCur = null, away = q.get('kit') === 'away';
+const loader = new GLTFLoader();
+
+function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+function tint(m) {
+  m.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    if (o.isSkinnedMesh) o.frustumCulled = false;   // bind-pose bounds don't follow posed limbs
+    if (o.material?.name === 'Mat_VestmentPrimary') {
+      o.material.color.set(away ? 0x6aa0ff : 0xffffff);   // viewer approximation of the away kit
+    }
+  });
+}
+
+async function load(id) {
+  if (model) scene.remove(model);
+  $('info').textContent = `loading assets/models/${id}.glb …`;
+  try { gltfCur = await loader.loadAsync(`assets/models/${id}.glb`); }
+  catch { $('info').textContent = `assets/models/${id}.glb not found`; return; }
+  model = gltfCur.scene; tint(model); scene.add(model);
+  mixer = new THREE.AnimationMixer(model);
+  actions = Object.fromEntries(gltfCur.animations.map((c) => [c.name, mixer.clipAction(c)]));
+  $('clip').innerHTML = '';
+  for (const c of gltfCur.animations) $('clip').add(new Option(`${c.name} (${c.duration.toFixed(2)} s)`, c.name));
+  $('clip').value = q.get('clip') && actions[q.get('clip')] ? q.get('clip') : (actions.idle ? 'idle' : gltfCur.animations[0]?.name);
+  let tris = 0; model.traverse((o) => { if (o.isMesh) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+  const extras = Object.fromEntries((gltfCur.parser.json.animations || []).filter((a) => a.extras?.refSpeed).map((a) => [a.name, a.extras.refSpeed]));
+  $('info').textContent = `${id}: ${Math.round(tris)} tris · clips ${gltfCur.animations.length} · refSpeed ${JSON.stringify(extras)}`;
+  play();
+}
+
+function play() {
+  mixer.stopAllAction();
+  const a = actions[$('clip').value];
+  if (!a) return;
+  a.reset().play();
+  const t = parseFloat(q.get('t'));
+  if (!Number.isNaN(t)) { a.paused = true; a.time = t; mixer.update(0); }
+}
+
+$('model').onchange = () => load($('model').value);
+$('clip').onchange = play;
+$('kit').onclick = () => { away = !away; $('kit').textContent = `Away kit: ${away ? 'on' : 'off'}`; if (model) tint(model); };
+$('kit').textContent = `Away kit: ${away ? 'on' : 'off'}`;
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  if (mixer) mixer.update(dt * parseFloat($('speed').value));
+  controls.update();
+  renderer.render(scene, camera);
+});
+load($('model').value);
+</script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#102a23">
+<title>Papifa: The orthodox way to play soccer</title>
+<link rel="icon" type="image/svg+xml" sizes="any" href="favicon.svg">
+<link rel="apple-touch-icon" sizes="192x192" href="assets/icons/papifa-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="menu.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<main id="front" data-page="title">
+  <header class="front-bar">
+    <span class="wordmark"><i class="crest" aria-hidden="true">✚</i> Papifa</span>
+    <button type="button" id="menu-back" hidden><span aria-hidden="true">←</span> Back</button>
+  </header>
+  <div class="front-stage">
+    <section class="front-page intro-page" id="title-page" aria-labelledby="game-title">
+      <h1 id="game-title" tabindex="-1"><span class="game-name">Papifa<span class="title-colon">:</span></span> <span class="game-subtitle">The orthodox way<br>to play soccer</span></h1>
+      <nav class="title-actions" aria-label="Main menu">
+        <button class="primary-action" type="button" id="new-game">New game <span aria-hidden="true">→</span></button>
+        <button type="button" class="menu-option" data-page="tutorial" id="menu-tutorial">Gamepad tutorial <span aria-hidden="true">↗</span></button>
+        <button type="button" class="menu-option" data-page="controls">Controls <span aria-hidden="true">↗</span></button>
+        <button type="button" class="menu-option" data-page="difficulty">Difficulty <span id="menu-level"></span></button>
+        <button type="button" class="menu-option" id="menu-sound" aria-pressed="true">Sound <span id="sound-state"></span></button>
+        <button type="button" class="menu-option" data-page="narration" id="menu-narration">Narration <span id="narration-state"></span></button>
+      </nav>
+      <p class="pad-advice" data-pad-advice>🎮 Papifa is made for a gamepad. Keyboard and mouse work, but it’s much harder.</p>
+      <p class="support-note">Papifa is free. The best way to support it is to <a href="https://github.com/artnoage/papifa-game" target="_blank" rel="noopener">★ star it on GitHub</a>.</p>
+    </section>
+    <figure id="title-portrait" aria-hidden="true">
+      <div class="portrait-arch"></div>
+      <div class="portrait-model"><img src="assets/ui/ioannis_home.webp" alt=""></div>
+      <figcaption>Vladyka Ioannis <span>Midfield</span></figcaption>
+    </figure>
+    <section class="front-page setting-page" id="controls-page" aria-labelledby="controls-title" hidden>
+      <h1 id="controls-title" tabindex="-1">Controls</h1>
+      <p class="pad-advice" data-pad-advice>🎮 Papifa is made for a gamepad. Keyboard and mouse work, but it’s much harder. New to the pad? Try the <button type="button" class="link-button" data-page="tutorial">gamepad tutorial</button>.</p>
+      <div class="control-columns">
+        <section><h2>On the pitch</h2><dl>
+          <dt>Move</dt><dd><span class="key-move">WASD or arrows</span><span class="pad-move">Left stick</span><span class="finger-move">Drag the movement stick</span></dd>
+          <dt class="key-move">Aim</dt><dd class="key-move">Point at the pitch with the mouse. Move and aim independently.</dd>
+          <dt class="pad-move">Aim</dt><dd class="pad-move">The arrow under your priest shows where the next pass or shot goes. Hold LT and the priest runs by himself for up to 2 s (to the ball, into space, or to where the attacker is heading) while the left stick turns the arrow.</dd>
+          <dt>Sprint</dt><dd><span class="key-move">Hold Shift.</span><span class="pad-move">Hold RT.</span><span class="finger-move">Drag to the stick rim.</span> Ease off to refill your stamina bar.</dd>
+          <dt>Pass or tackle</dt><dd><span class="key-move">Space (or right-click to pass, left-click to tackle). Shift + Space slides.</span><span class="pad-move">A to pass or standing tackle. X (or RT + A) to slide tackle.</span><span class="finger-move">Tap Pass or Tackle</span></dd>
+          <dt>Shoot</dt><dd><span class="key-move">Hold F or left click to shoot · tap far from goal to knock it ahead (within 24 m, tap for a quick shot).</span><span class="pad-move">Hold B to shoot · tap far from goal to knock it ahead (within 24 m, tap for a quick shot).</span><span class="finger-move">Hold Shoot to shoot · tap far from goal to knock it ahead (within 24 m, tap for a quick shot).</span></dd>
+          <dt>Switch priest</dt><dd><span class="key-move">Steer and tap Q, or right-click in a direction.</span><span class="pad-move">Tap LB (steer with the left stick).</span><span class="finger-move">Steer and tap Switch.</span> You control the nearest teammate that way, keeper included.</dd>
+          <dt>Keeper</dt><dd>After a catch, you control him. <span class="key-move">Left-click or F to punt toward the aim (hold for distance). Space or right-click to pass.</span><span class="pad-move">B to punt (hold for distance); A to pass. Both go toward the aim.</span><span class="finger-move">Aim with the stick and release Shoot to punt.</span></dd>
+          <dt>Pray (2 per match)</dt><dd>Jesus is so strong he uses both prayers; Mary and St George use one each. <span class="key-move">Hold R for 2 s to fill the cross, then press 1 for Jesus (unstoppable next shot, 15 s), 2 for Mother Mary (glowing goal shield, 15 s), or 3 for St George (white horse, +30% speed, 15 s).</span><span class="pad-move">Push and hold the right stick: left for Jesus, up for St George, right for Mother Mary. The cross fills in 2 s, then the prayer starts (15 s).</span><span class="finger-move">Hold Pray for 2 s to fill the cross, then tap Jesus, George, or Mary (15 s).</span></dd>
+        </dl>
+        <details class="key-move keyboard-help"><summary>Keyboard only</summary>
+          <p>Space passes or tackles (Shift + Space slides). Hold F to shoot · tap F far from goal to knock it ahead. E plays a through ball. Q plays a one-two with the ball, or switches (tap) / calls a press (hold) without it. C chips. Double-tap Shift for a knock-on. Hold R for 2 s to pray, then press 1 (Jesus), 2 (Mary), or 3 (George). P or Esc pauses · M mutes.</p>
+        </details></section>
+        <section id="front-moves"><h2>Match moves</h2></section>
+      </div>
+    </section>
+    <section class="front-page setting-page" id="tutorial-page" aria-labelledby="tutorial-title" hidden>
+      <h1 id="tutorial-title" tabindex="-1">Gamepad tutorial</h1>
+      <p class="selection-hint">Every control, one at a time: first you watch it, then you do it. About five minutes.</p>
+      <div class="tutorial-start">
+        <p class="tutorial-start-prompt" id="tutorial-status" role="status">Press <b>A</b> on your controller to start.</p>
+        <p class="tutorial-start-note">Connect a controller first (Xbox, PlayStation or any standard pad). View skips a step; Start pauses.</p>
+        <p id="tutorial-error" class="form-feedback" role="alert"></p>
+      </div>
+    </section>
+    <section class="front-page setting-page" id="difficulty-page" aria-labelledby="difficulty-title" hidden>
+      <h1 id="difficulty-title" tabindex="-1">Difficulty</h1>
+      <fieldset id="menu-levels" class="level-options"><legend class="visually-hidden">Match difficulty</legend>
+        <label><input type="radio" name="menu-level" value="veryEasy"> Very easy</label>
+        <label><input type="radio" name="menu-level" value="easy"> Easy</label>
+        <label><input type="radio" name="menu-level" value="normal" checked> Normal</label>
+        <label><input type="radio" name="menu-level" value="hard"> Hard</label>
+        <label><input type="radio" name="menu-level" value="veryHard"> Very hard</label>
+      </fieldset>
+    </section>
+    <section class="front-page setting-page" id="narration-page" aria-labelledby="narration-title" hidden>
+      <h1 id="narration-title" tabindex="-1">Narration</h1>
+      <fieldset id="menu-narration-lang" class="level-options"><legend class="visually-hidden">Narration language</legend>
+        <label><input type="radio" name="menu-narration" value="el"> Ελληνικά</label>
+        <label><input type="radio" name="menu-narration" value="en"> English</label>
+        <label><input type="radio" name="menu-narration" value="off"> Off</label>
+      </fieldset>
+      <label class="volume-control" for="menu-narration-vol">
+        <span>Narration volume <strong id="menu-narration-vol-value">85%</strong></span>
+        <input id="menu-narration-vol" type="range" min="0" max="100" step="5" value="85">
+      </label>
+      <p class="selection-hint">Press M during a match to mute all sound and narration.</p>
+    </section>
+    <section class="front-page claim-page" id="players-page" aria-labelledby="players-title" data-mode="ai" hidden>
+      <h1 id="players-title" tabindex="-1">Who's playing?</h1>
+      <p class="selection-hint" id="claim-hint">Claim a device for Player 1 to continue.</p>
+      <p class="pad-advice" id="claim-pad-advice" data-pad-advice>🎮 Papifa is made for a gamepad. Keyboard and mouse work, but it’s much harder.</p>
+      <fieldset id="play-mode" class="claim-modes"><legend class="visually-hidden">Game mode</legend>
+        <label><input type="radio" name="play-mode" value="ai" checked> vs AI</label>
+        <label id="local-mode-option"><input type="radio" name="play-mode" value="local"> Local 2P</label>
+        <label data-online-mode hidden><input type="radio" name="play-mode" value="host" disabled> Host online</label>
+        <label data-online-mode hidden><input type="radio" name="play-mode" value="join" disabled> Join online</label>
+      </fieldset>
+      <div class="claim-slots" id="claim-slots">
+        <div class="claim-slot" id="claim-slot-0" data-slot="0" data-state="waiting">
+          <div class="claim-slot-head"><h2>Player 1</h2><span class="claim-slot-role">Team 1</span></div>
+          <div class="claim-slot-body">
+            <strong class="claim-device" data-slot-device>Waiting for device…</strong>
+            <p class="claim-prompt" data-slot-prompt></p>
+          </div>
+          <div class="claim-slot-foot">
+            <button type="button" class="claim-clear" data-clear-slot="0" hidden>Change</button>
+          </div>
+        </div>
+        <div class="claim-slot" id="claim-slot-1" data-slot="1" data-state="waiting" hidden>
+          <div class="claim-slot-head"><h2>Player 2</h2><span class="claim-slot-role">Team 2</span></div>
+          <div class="claim-slot-body">
+            <strong class="claim-device" data-slot-device>Waiting for device…</strong>
+            <p class="claim-prompt" data-slot-prompt></p>
+          </div>
+          <div class="claim-slot-foot">
+            <button type="button" class="claim-clear" data-clear-slot="1" hidden>Change</button>
+          </div>
+        </div>
+      </div>
+      <p id="claim-notice" class="form-feedback" role="status"></p>
+      <div class="claim-actions">
+        <div class="claim-actions-left">
+          <button type="button" id="claim-swap" class="claim-swap" hidden>Swap P1 / P2</button>
+        </div>
+        <button type="button" id="claim-continue" class="primary-action" disabled><span id="claim-next">Choose teams</span> <span aria-hidden="true">→</span></button>
+      </div>
+    </section>
+    <section class="front-page setting-page" id="room-page" aria-labelledby="room-title" hidden>
+      <h1 id="room-title" tabindex="-1">Host a match</h1>
+      <div id="invite-host" class="invite-panel" hidden>
+        <p class="invite-notice">Keep this screen open until your opponent sends back their reply code.</p>
+        <div class="invite-step">
+          <label for="invite-code-out">1. Send this invite code to your opponent</label>
+          <textarea id="invite-code-out" rows="3" readonly spellcheck="false" aria-describedby="room-status"></textarea>
+          <button type="button" id="copy-invite" class="invite-copy">Copy invite</button>
+        </div>
+        <form id="host-reply-form" class="invite-step" novalidate>
+          <label for="reply-code-in">2. Paste your opponent’s reply code</label>
+          <textarea id="reply-code-in" rows="3" placeholder="Paste reply code (P1R-…)" autocomplete="off" spellcheck="false"></textarea>
+          <button class="primary-action" id="connect-reply" type="submit">Connect <span aria-hidden="true">→</span></button>
+        </form>
+      </div>
+      <div id="invite-guest" class="invite-panel" hidden>
+        <form id="guest-invite-form" class="invite-step" novalidate>
+          <label for="invite-code-in">1. Paste your host’s invite code</label>
+          <textarea id="invite-code-in" rows="3" placeholder="Paste invite code (P1I-…)" autocomplete="off" spellcheck="false"></textarea>
+          <button class="primary-action" id="create-reply" type="submit">Create reply <span aria-hidden="true">→</span></button>
+        </form>
+        <div id="guest-reply-box" class="invite-step" hidden>
+          <p id="invite-match-summary" class="invite-summary"></p>
+          <label for="reply-code-out">2. Send this reply code back to your host</label>
+          <textarea id="reply-code-out" rows="3" readonly spellcheck="false"></textarea>
+          <button type="button" id="copy-reply" class="invite-copy">Copy reply</button>
+          <p class="invite-notice">Keep this screen open — the match starts once your host connects.</p>
+        </div>
+      </div>
+      <p id="room-status" role="status" aria-live="polite"></p>
+    </section>
+    <section class="front-page selection-page" id="teams-page" aria-labelledby="team-title" hidden>
+      <h1 id="team-title" tabindex="-1">Choose your team</h1>
+      <p class="selection-hint">Pick your kit. The CPU wears the other.</p>
+      <div class="match-setup">
+        <fieldset id="match-size"><legend>Team size</legend>
+          <label><input type="radio" name="size" value="3">3v3</label>
+          <label><input type="radio" name="size" value="5" checked>5v5</label>
+        </fieldset>
+        <label class="field-choice" for="match-field">Field<select id="match-field" name="field"></select></label>
+      </div>
+      <fieldset id="kit-options"><legend class="visually-hidden">Your team</legend>
+        <label class="team-choice gold"><input type="radio" name="kit" value="gold" checked><span class="team-symbol" aria-hidden="true">✚</span><strong>Gold Cross</strong><small></small></label>
+        <label class="team-choice blue"><input type="radio" name="kit" value="blue"><span class="team-symbol dome" aria-hidden="true"></span><strong>Blue Dome</strong><small></small></label>
+      </fieldset>
+      <ul class="lineup" id="lineup" aria-label="Five priests in both kits"></ul>
+      <div class="kickoff-actions"><span id="selected-kit" aria-live="polite"></span><button type="button" id="kick-off" class="primary-action"><span id="kickoff-label">Kick off</span><span aria-hidden="true">→</span></button></div>
+      <p id="kickoff-error" class="form-feedback" role="status"></p>
+    </section>
+  </div>
+</main>
+<div id="match-shell" tabindex="-1" hidden>
+<div id="network-status" role="status" hidden>
+  <p></p><button type="button" id="rejoin-room">Reconnect</button> <button type="button" id="leave-room">Return to menu</button>
+</div>
+<div id="player-edge" class="player-edge" data-team="0" aria-hidden="true" hidden><i></i><b></b></div>
+<div id="player-edge-1" class="player-edge" data-team="1" aria-hidden="true" hidden><i></i><b></b></div>
+<div id="player-stamina" class="stamina-bar player-stamina" data-team="0" aria-hidden="true" hidden></div>
+<div id="player-stamina-1" class="stamina-bar player-stamina" data-team="1" aria-hidden="true" hidden></div>
+<div id="venue-intro" hidden>
+  <span id="venue-name"></span><button id="skip-intro" type="button">Skip intro</button>
+</div>
+<div id="hud">
+  <div id="score"><span id="name0">Gold Cross</span> <b id="s0">0</b> : <b id="s1">0</b> <span id="name1">Blue Dome</span></div>
+  <div id="clock">3:00</div>
+  <div id="controlled-bar"><div id="controlled"></div><div id="controlled-1" hidden></div></div>
+  <div id="move-signal" role="status" hidden><b aria-hidden="true"></b><span></span></div>
+</div>
+<nav id="match-tools" aria-label="Match controls">
+<span id="net-badge" role="status" hidden></span><button id="pause-button" type="button" aria-haspopup="dialog" aria-controls="pause-menu">Pause</button>
+<details id="move-help">
+  <summary>Moves</summary>
+  <div class="move-panel">
+  <label id="guide-owner" hidden>Controls for <select aria-label="Player controls"></select></label>
+  <dl>
+    <dt>Through ball</dt><dd><span class="key-move">E (or Shift + right-click)</span><span class="pad-move">Y</span><span class="finger-move">Swipe up on Pass</span></dd>
+    <dt>Chip shot</dt><dd><span class="key-move">C</span><span class="pad-move">LB + B</span><span class="finger-move">Hold Shoot, swipe up and release</span></dd>
+    <dt>One-two</dt><dd><span class="key-move">Q with the ball</span><span class="pad-move">LB + A</span><span class="finger-move">Swipe right on Pass</span></dd>
+    <dt>Knock-on</dt><dd><span class="key-move">Double-tap Shift, or tap F / left click far from goal</span><span class="pad-move">Double-tap RT, or tap B far from goal</span><span class="finger-move">Tap Shoot far from goal to knock it ahead, or double-tap the stick centre</span></dd>
+    <dt>Call a teammate to press</dt><dd><span class="key-move">Hold Q without the ball</span><span class="pad-move">Hold RB</span><span class="finger-move">Hold Switch</span></dd>
+    <dt>Pray (2 per match, Jesus uses both)</dt><dd><span class="key-move">Hold R (2 s), then 1 (Jesus), 2 (Mary), or 3 (George)</span><span class="pad-move">Hold right stick ◀ (Jesus), ▲ (George), or ▶ (Mary), 2 s</span><span class="finger-move">Hold Pray (2 s), then tap Jesus, George, or Mary</span></dd>
+  </dl>
+  </div>
+</details>
+</nav>
+<dialog id="pause-menu" aria-labelledby="pause-title">
+  <h1 id="pause-title">Paused</h1>
+  <fieldset id="difficulty">
+    <legend>Difficulty</legend>
+    <label><input type="radio" name="level" value="veryEasy">Very easy</label>
+    <label><input type="radio" name="level" value="easy">Easy</label>
+    <label><input type="radio" name="level" value="normal" checked>Normal</label>
+    <label><input type="radio" name="level" value="hard">Hard</label>
+    <label><input type="radio" name="level" value="veryHard">Very hard</label>
+  </fieldset>
+  <fieldset id="pause-narration">
+    <legend>Narration</legend>
+    <div id="pause-narration-lang" class="pause-narration-langs">
+      <label><input type="radio" name="pause-narration" value="el">Ελληνικά</label>
+      <label><input type="radio" name="pause-narration" value="en">English</label>
+      <label><input type="radio" name="pause-narration" value="off">Off</label>
+    </div>
+    <label class="pause-volume" for="pause-narration-vol">
+      <span>Volume <b id="pause-narration-vol-value">85%</b></span>
+      <input id="pause-narration-vol" type="range" min="0" max="100" step="5" value="85">
+    </label>
+  </fieldset>
+  <button id="resume-button" type="button" autofocus>Resume</button>
+  <button id="quit-tutorial" type="button" hidden>Quit tutorial</button>
+  <p id="pad-pause-hint" hidden>D-pad to choose · A to resume</p>
+  <p id="pause-connection" hidden></p>
+</dialog>
+<section id="results-card" aria-labelledby="results-title" hidden>
+  <h1 id="results-title">Full time</h1>
+  <table aria-label="Match statistics">
+    <thead><tr><th scope="col"></th><td></td><th scope="col"></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="results-actions">
+    <button type="button" id="rematch-button">Rematch</button>
+    <button type="button" id="change-level">Change difficulty</button>
+  </div>
+  <p class="support-note">Enjoyed it? The best way to support Papifa is to <a href="https://github.com/artnoage/papifa-game" target="_blank" rel="noopener">★ star it on GitHub</a>.</p>
+</section>
+<div id="power" class="power-meter" data-team="0"><div id="powerfill" class="power-fill"></div></div>
+<div id="power-1" class="power-meter" data-team="1" hidden><div id="powerfill-1" class="power-fill"></div></div>
+<div id="banner"></div>
+<div id="replay" hidden><b>● REPLAY</b> · <span id="replay-hint">Space to skip</span></div>
+<div id="help">
+  <div class="control-line" data-guide="keyboard">
+    <b data-player></b>
+    <span class="key-move"><b>Move</b> WASD / arrows ·
+      <span id="aim-hint" data-hint="attack" hidden><b>Shoot</b> hold left click or F · tap far out to knock on · <b>Pass</b> Space / right click · <b>Through</b> E · <b>One-two</b> Q · <b>Chip</b> C</span>
+      <span id="keeper-hint" data-hint="keeperAim" hidden><b>Punt</b> left click or F toward aim · <b>Pass</b> right click or Space</span>
+      <span id="defend-hint" data-hint="defend" hidden><b>Tackle</b> Space / left click (Shift + Space slides) · <b>Switch</b> right click or tap Q · <b>Press</b> hold Q</span>
+      <span id="keyboard-keeper-hint" data-hint="keeperKeys" hidden><b>Punt</b> steer and release F · <b>Pass</b> Space</span>
+      <span id="keyboard-hint" data-hint="keys"><b>Pass / tackle</b> Space (Shift slides) · <b>Shoot</b> hold F · <b>Through</b> E · <b>One-two / Switch</b> Q · <b>Chip</b> C</span>
+      · <b>Pray</b> hold R, 1 / 2 / 3 · <b>Sprint</b> Shift · <b>Camera</b> V / wheel · <b>Mute</b> M · <b>Pause</b> P / Esc</span>
+    <span class="pad-move"><b>Move</b> left stick · <b>Autopilot + aim</b> hold LT · <b>Pass / tackle</b> A · <b>Slide</b> X ·
+      <span data-hint="pad"><b>Shoot</b> hold B · <b>Through</b> Y · <b>One-two / Chip</b> LB + A / B</span><span data-hint="padKeeper" hidden><b>Punt</b> aim and release B · <b>Pass</b> A</span>
+      · <b>Switch</b> LB · <b>Press</b> hold RB · <b>Pray</b> hold right stick ◀ / ▲ / ▶ · <b>Sprint</b> RT · <b>Pause</b> Start</span>
+  </div>
+</div>
+<div id="touch-controls" role="group" aria-label="Touch controls" hidden>
+  <div class="touch-movement">
+    <div id="touch-stick" data-control="move" role="group" aria-label="Movement stick. Drag to steer, reach the rim to sprint.">
+      <span class="stick-thumb"></span>
+    </div>
+    <span class="stick-hint">Rim to sprint</span>
+    <span id="touch-stamina" role="meter" aria-label="Stamina" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" hidden>Stamina <i class="stamina-bar"></i></span>
+  </div>
+  <div class="touch-right">
+    <div id="touch-prayer-choices" hidden>
+      <button type="button" data-prayer-choice="jesus" aria-label="Choose Jesus prayer (unstoppable next shot)">
+        <span class="pray-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2.5v19M5.5 9.5h13M8.5 5.5h7M8.5 16.5l7 2.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><small>Jesus</small>
+      </button>
+      <button type="button" data-prayer-choice="george" aria-label="Choose St George prayer (white horse, +30% speed)">
+        <span class="pray-icon" aria-hidden="true"><svg viewBox="0 0 28 24" width="32" height="28"><path d="M5 19.5c1.5-4.5 3.6-8.4 7-11.2 1.8-1.5 3.6-2.4 5.2-2.6l1.8-2.3.8 2.4 3.4 2.1c.8.5.7 1.7-.2 2.1l-3.4 1.2c-.8 1.5-1.2 3.3-1.1 5.4l.3 2.9" fill="#f7f4ec" stroke="#ffd878" stroke-width="1.4" stroke-linejoin="round"/><path d="M16.8 6.4l3.6 2.1M11.6 12.6c1.5 1.1 3.6 1.2 5.4.2" fill="none" stroke="#c82828" stroke-width="1.5" stroke-linecap="round"/><circle cx="17.8" cy="7.6" r="0.85" fill="#1e1818"/></svg></span><small>George</small>
+      </button>
+      <button type="button" data-prayer-choice="mary" aria-label="Choose Mother Mary prayer (shield goal)">
+        <span class="pray-icon" aria-hidden="true"><svg viewBox="0 0 28 24" width="32" height="28"><circle cx="14" cy="9.2" r="6.4" fill="none" stroke="#ffe799" stroke-width="1.35" opacity="0.88"/><path d="M14 4.2 C10.4 4.2 8.2 7.2 7.2 12.6 L4.6 22.0 L23.4 22.0 L20.8 12.6 C19.8 7.2 17.6 4.2 14 4.2 Z" fill="#2c7ec8" stroke="#c8ecff" stroke-width="1.35" stroke-linejoin="round"/><path d="M11.6 13.6 L9.0 21.6 M16.4 13.6 L19.0 21.6" fill="none" stroke="#9ad7ff" stroke-width="1.15" stroke-linecap="round" opacity="0.85"/><ellipse cx="14" cy="9.8" rx="2.5" ry="3.1" fill="#f3d2b0"/><circle cx="14" cy="5.6" r="0.85" fill="#fff4bd"/><circle cx="8.7" cy="14.2" r="0.75" fill="#fff4bd"/><circle cx="19.3" cy="14.2" r="0.75" fill="#fff4bd"/></svg></span><small>Mary</small>
+      </button>
+    </div>
+    <div class="touch-actions">
+      <button type="button" data-control="pray" aria-label="Pray. Hold 2 seconds to fill cross.">Pray<small>Hold</small></button>
+      <button type="button" data-control="switch">Switch</button>
+      <button type="button" data-control="pass">Pass</button>
+      <button type="button" data-control="shoot" aria-label="Shoot. Hold to shoot, tap far from goal to knock it ahead.">Shoot<small>Hold</small></button>
+    </div>
+  </div>
+</div>
+</div>
+<script type="module" src="src/menu.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+Asset License — Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+
+Copyright (c) 2026 Papifa contributors
+
+All non-code creative assets in this repository — including 3D models (.glb),
+textures and UI artwork (.webp, .png, .svg), screenshots, and voice/narration
+audio (.mp3) located under `game/assets/` and `docs/screenshots/` — are licensed
+under the Creative Commons Attribution-NonCommercial 4.0 International License
+(CC BY-NC 4.0), unless otherwise noted.
+
+You are free to:
+- Share — copy and redistribute the assets in any medium or format.
+- Adapt — remix, transform, and build upon the assets.
+
+Under the following terms:
+- Attribution — You must give appropriate credit, provide a link to the license,
+  and indicate if changes were made.
+- NonCommercial — You may not use the assets for commercial purposes.
+- No additional restrictions — You may not apply legal terms or technological
+  measures that legally restrict others from doing anything the license permits.
+
+Full legal code: https://creativecommons.org/licenses/by-nc/4.0/legalcode
+
+Source code in this repository is separately licensed under the PolyForm
+Noncommercial License 1.0.0 (see `LICENSE`): free to use, change and share for
+any non-commercial purpose; commercial use is not permitted.

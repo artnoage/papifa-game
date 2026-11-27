@@ -1,0 +1,20 @@
+{
+  "name": "papifa-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop wrapper for Papifa: The orthodox way to play soccer",
+  "author": "artnoage",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "main": "main.js",
+  "desktopName": "papifa.desktop",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:linux": "node build.mjs --linux",
+    "build:win": "node build.mjs --win",
+    "smoke": "node smoke.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.5.0",
+    "electron-builder": "26.18.0"
+  }
+}

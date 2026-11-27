@@ -1,0 +1,14 @@
+# Build & tooling
+node_modules/
+dist/
+staged-web/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local screenshots / scratch outputs
+assets-src/
+
+# OS / editor
+.DS_Store
+*.swp

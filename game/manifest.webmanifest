@@ -1,0 +1,15 @@
+{
+  "id": "/papifa/",
+  "name": "Papifa: The orthodox way to play soccer",
+  "short_name": "Papifa",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "theme_color": "#102a23",
+  "background_color": "#102a23",
+  "icons": [
+    { "src": "assets/icons/papifa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/papifa-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/papifa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

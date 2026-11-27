@@ -1,22 +1,79 @@
 # Papifa
 
-**Papifa: The orthodox way to play soccer** — a fast, arcade 3D football game starring Orthodox priests, playable in the browser and as a standalone Electron desktop app (Windows, Linux, and macOS).
+**Play now:** <https://metaskepsis.com/papifa/>
 
-Gameplay is intentionally arcade-first: responsive dribbling, easy passing, assisted shooting, three monastery venues (*Courtyard*, *Meteora cliff-top*, *Winter monastery*), 3v3 and 5v5 matches, local 2-player, online WebRTC P2P multiplayer, and special prayer blessings (including riding St George's white warhorse across the pitch). The polish goes into how the priests move: running, turning, tackling, sliding, kicking, and robes and beards in motion.
+**Papifa: The orthodox way to play soccer** — a free, fast arcade 3D football game starring Orthodox priests, playable straight in your browser and as a standalone desktop app for Windows, Linux, and macOS.
 
-## Screenshots
+Papifa is completely free. **The best way to support Papifa is to ⭐ star this repo.**
 
-| Title & 3D Portrait | 5v5 Monastery Match |
+| Title & 3D Portrait | 5v5 Monastery Courtyard |
 | :---: | :---: |
-| ![Papifa title menu](docs/screenshots/menu.webp) | ![5v5 match in progress](docs/screenshots/match.webp) |
+| ![Papifa title menu with Vladyka Ioannis](docs/screenshots/menu.webp) | ![5v5 match in the Monastery Courtyard](docs/screenshots/match.webp) |
 
-| St George Prayer Blessing | Interactive Gamepad Tutorial |
+---
+
+## Features
+
+### The Priests & Movement Realism
+Arcade rules keep every match fast, responsive, and easy to pick up — the effort goes into how the priests move: running, turning, tackling, sliding, kicking, diving saves, celebrations, and flowing cassocks and beards in motion. Two kits face off (**Gold Cross** vs **Blue Dome**) in **3v3** or **5v5** matches officiated by **The Patriarch**:
+
+| Priest | Role | Style |
+| :--- | :--- | :--- |
+| **Father Luka** | Goalkeeper (`GK`) | Towering purple kamilavka, full-stretch diving parries, strong catches, and aimed punts |
+| **Papa Giorgis** | Defender (`DF`) | Broad black kalimavkion, long beard, fearless standing and slide tackles |
+| **Brother Seraphim** | Left Midfield (`ML`) | Tall monastic koukoulion, tireless box-to-box running and through balls |
+| **Vladyka Ioannis** | Right Midfield (`MR`) | Ornate golden mitre, crisp passing and curling shots from midfield |
+| **Diakon Nikolai** | Striker (`FW`) | Fast, nimble forward in a skufia who leads the press and counter-attacks |
+
+### Three Monastery Venues
+Play across three distinct 3D stadiums in 3v3 or 5v5 scale:
+- **Monastery Courtyard** — sunlit stone cloisters, cypress trees, and red-tiled arches.
+- **Meteora Cliff-top** — perched high on sheer rock pillars overlooking the valley.
+- **Winter Monastery** — crisp snowfall, frosted pines, and cold-weather floodlights.
+
+| Meteora Cliff-top | Winter Monastery |
 | :---: | :---: |
-| ![Diakon Nikolai riding St George's white warhorse](docs/screenshots/st-george.webp) | ![Interactive gamepad tutorial](docs/screenshots/tutorial.webp) |
+| ![5v5 match at the Meteora cliff-top venue](docs/screenshots/venue-meteora.webp) | ![5v5 match at the Winter Monastery venue](docs/screenshots/venue-winter.webp) |
+
+### Three Prayers (Divine Blessings)
+Each team has **2 prayer slots per match**. Hold the pray control for 2 seconds to fill the cross, then invoke a 15-second blessing:
+- **Jesus (uses both slots):** descends with a golden aura — your next shot becomes an unstoppable golden beam straight for the net.
+- **Mother Mary (1 slot):** shields your goal with a luminous celestial-blue barrier that rebounds incoming shots. If a Jesus shot hits Mother Mary's shield, both cancel in a dramatic **Clash** (*"Everyone is God's favorite child"*).
+- **St George (1 slot):** rides onto the pitch on his white warhorse at **+30% speed**, charging past defenders with robes flying.
+
+| Jesus Prayer & Golden Beam | Mother Mary Goal Shield | St George Warhorse (+30% Speed) |
+| :---: | :---: | :---: |
+| ![Jesus prayer aura and golden beam shot](docs/screenshots/prayer-jesus.webp) | ![Mother Mary celestial-blue goal shield](docs/screenshots/prayer-mary.webp) | ![Diakon Nikolai riding St George's white warhorse](docs/screenshots/st-george.webp) |
+
+### 3D Corner Cameos, Live Commentary & Slow-Motion Replays
+- **3D Picture-in-Picture Cameos:** big goals, thunderous goalkeeper catches, and every team's **4th goal** pop animated, lip-synced 3D parody characters into the corner of the screen with synthetic voice lines.
+- **Live Narration:** toggleable **English** and **Greek** match commentary (or Off) with automatic sound-effect ducking.
+- **Celebrations & Replays:** every goal triggers full-squad celebrations followed by a broadcast-style **`● REPLAY`** slow-motion playback.
+
+| 3D Corner Cameo | Slow-Motion Goal Replay |
+| :---: | :---: |
+| ![3D corner TV cameo reacting to a goal](docs/screenshots/cameo.webp) | ![Broadcast slow-motion goal replay](docs/screenshots/replay.webp) |
+
+### Play Modes & Devices
+- **Solo vs AI:** five difficulty levels from *Very easy* to *Very hard*.
+- **Interactive Gamepad Tutorial:** a 14-step watch-and-try tutorial with a live on-screen controller diagram teaching every move from dribbling and chips to autopilot aim and prayers.
+- **Local 2-Player:** share one screen with two controllers, or one controller + keyboard & mouse.
+- **Online 2-Player (Invite Codes, No Server Required):** swap short invite & reply codes (`P1I-…` / `P1R-…`) to connect directly peer-to-peer over WebRTC — no accounts or sign-ups needed.
+- **Mobile Touch Controls:** playable on phones and tablets with a virtual movement stick, swipe moves, and touch prayer wheel.
+
+| Interactive Gamepad Tutorial | Local 2-Player on One Screen |
+| :---: | :---: |
+| ![Interactive gamepad tutorial with controller diagram](docs/screenshots/tutorial.webp) | ![Local 2-player match with dual rings and HUD](docs/screenshots/local-2p.webp) |
+
+| Online 2P Invite Codes | Phone Touch Layout |
+| :---: | :---: |
+| ![Online invite-code hosting screen](docs/screenshots/online-invite.webp) | ![Mobile landscape touch controls](docs/screenshots/mobile-touch.webp) |
 
 ---
 
 ## Play in the browser
+
+Play immediately online at **<https://metaskepsis.com/papifa/>**, or run your own local copy:
 
 ### Option 1: Build a self-contained static web release (recommended)
 

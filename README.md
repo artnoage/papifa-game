@@ -35,11 +35,12 @@ Play across three distinct 3D stadiums in 3v3 or 5v5 scale:
 | :---: | :---: |
 | ![5v5 match at the Meteora cliff-top venue](docs/screenshots/venue-meteora.webp) | ![5v5 match at the Winter Monastery venue](docs/screenshots/venue-winter.webp) |
 
-### Three Prayers (Divine Blessings)
-Each team has **2 prayer slots per match**. Hold the pray control for 2 seconds to fill the cross, then invoke a 15-second blessing:
-- **Jesus (uses both slots):** descends with a golden aura — your next shot becomes an unstoppable golden beam straight for the net.
-- **Mother Mary (1 slot):** shields your goal with a luminous celestial-blue barrier that rebounds incoming shots. If a Jesus shot hits Mother Mary's shield, both cancel in a dramatic **Clash** (*"Everyone is God's favorite child"*).
-- **St George (1 slot):** rides onto the pitch on his white warhorse at **+30% speed**, charging past defenders with robes flying.
+### Four Prayers (Divine Blessings)
+Each team has **2 prayer slots per match**. Hold the pray control for 2 seconds to fill the cross, then pick a saint:
+- **Jesus (uses both slots, 10 s):** descends with a golden aura — your next shot becomes an unstoppable golden beam straight for the net.
+- **Mother Mary (1 slot, 12 s):** shields your goal with a luminous celestial-blue barrier that rebounds incoming shots. If a Jesus shot hits Mother Mary's shield, both cancel in a dramatic **Clash** (*"Everyone is God's favorite child"*).
+- **St George (1 slot, 15 s):** rides onto the pitch on his white warhorse at **+30% speed**, charging past defenders with robes flying. Tackle the rider and the horse is gone — but he tumbles forward with the ball still at his feet.
+- **St Phanourios (1 slot, 15 s):** the finder of lost things. Loose balls curve back to your priests, and your passes find their man from further away.
 
 | Jesus Prayer & Golden Beam | Mother Mary Goal Shield | St George Warhorse (+30% Speed) |
 | :---: | :---: | :---: |
@@ -128,7 +129,7 @@ npm run build
 | **Chip shot** | **LB + B** | **C** | Hold **Shoot**, swipe up & release |
 | **One-two** | **LB + A** | **Q** with the ball | Swipe right on **Pass** |
 | **Switch / Call press** | Tap **LB** / Hold **RB** | Tap **Q** (or right-click) / Hold **Q** | Tap **Switch** / Hold **Switch** |
-| **Pray (2 slots per match)** | Hold right stick 2 s: ◀ Jesus · ▲ St George · ▶ Mother Mary | Hold **R** 2 s, then **1** (Jesus) · **2** (Mary) · **3** (St George) | Hold **Pray** 2 s, then tap blessing |
+| **Pray (2 slots per match)** | Hold right stick 2 s: ◀ Jesus · ▲ St George · ▶ Mother Mary · ▼ St Phanourios | Hold **R** 2 s, then **1** (Jesus) · **2** (Mary) · **3** (St George) · **4** (St Phanourios) | Hold **Pray** 2 s, then tap blessing |
 | **Pause / Mute / Fullscreen** | **Start** | **P** or **Esc** · **M** mute · **V** camera · **F11** desktop fullscreen | **Pause** button |
 
 ---

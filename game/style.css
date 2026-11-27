@@ -190,6 +190,41 @@ canvas { display: block; }
   animation: prayerReadyCall 1.15s ease-in-out infinite;
 }
 .prayer-slot[data-state="mary"] .prayer-status { border-color: rgba(128,208,255,0.7); color: #d9f2ff; }
+/* Right-stick prayer wheel for gamepad players: ◀ Jesus, ▲ St George, ▶ Mary around the stick. */
+.prayer-wheel {
+  display: grid;
+  grid-template-columns: repeat(3, 42px);
+  grid-template-rows: 42px 42px;
+  gap: 2px 4px;
+  place-items: center;
+  padding: 4px 6px;
+  border-radius: 10px;
+  background: rgba(12,26,20,0.78);
+  border: 1px solid rgba(255,225,152,0.38);
+}
+.prayer-wheel[hidden] { display: none; }
+.pw-icon {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover; object-position: 50% 20%;
+  border: 2px solid #ffe08a; box-shadow: 0 1px 4px #000a;
+}
+.pw-george { grid-column: 2; grid-row: 1; border-color: #ff9a7a; }
+.pw-jesus { grid-column: 1; grid-row: 2; }
+.pw-stick { grid-column: 2; grid-row: 2; }
+.pw-mary { grid-column: 3; grid-row: 2; border-color: #8fd2ff; }
+.pw-stick {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #59605a, #1c211d 70%);
+  border: 2px solid #c9c2a6; color: #fff6d4; font: 800 14px/1 system-ui, sans-serif;
+  box-shadow: 0 0 0 3px rgba(255,225,152,0.18), 0 1px 4px #000a;
+}
+.prayer-wheel.no-jesus .pw-jesus { filter: grayscale(1) brightness(0.55); opacity: 0.5; }
+.prayer-wheel[data-state="ready"] { border-color: #ffe278; box-shadow: 0 0 14px rgba(255,214,88,0.55); }
+.prayer-wheel[data-state="ready"] .pw-stick { animation: prayerPulse 1.15s ease-in-out infinite; }
+@media (max-width: 700px), (max-height: 480px) {
+  .prayer-wheel { grid-template-columns: repeat(3, 30px); grid-template-rows: 30px 30px; }
+  .pw-icon { width: 28px; height: 28px; border-width: 1.5px; }
+  .pw-stick { width: 26px; height: 26px; font-size: 11px; }
+}
 .prayer-slot[data-state="george"] .prayer-status { border-color: rgba(255,126,96,0.8); color: #ffe9d2; }
 @keyframes prayerPulse {
   0%, 100% { opacity: 0.55; }

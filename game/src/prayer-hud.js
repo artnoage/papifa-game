@@ -171,6 +171,12 @@ export function createPrayerHud(root, devices = []) {
             <span class="prayer-caption-hint"></span>
           </div>
           <div class="prayer-status" hidden></div>
+          <div class="prayer-wheel" hidden aria-hidden="true">
+            <img class="pw-icon pw-george" src="assets/ui/icon_george.webp" alt="">
+            <img class="pw-icon pw-jesus" src="assets/ui/icon_christ.webp" alt="">
+            <span class="pw-stick">R</span>
+            <img class="pw-icon pw-mary" src="assets/ui/icon_mary.webp" alt="">
+          </div>
         </div>
       </div>
     `;
@@ -187,6 +193,7 @@ export function createPrayerHud(root, devices = []) {
       captionTitle: card.querySelector('.prayer-caption-title'),
       captionHint: card.querySelector('.prayer-caption-hint'),
       status: card.querySelector('.prayer-status'),
+      wheel: card.querySelector('.prayer-wheel'),
       prompt: promptFor(team),
     };
   });
@@ -229,6 +236,14 @@ export function createPrayerHud(root, devices = []) {
         s.caption.hidden = false;
       } else {
         s.caption.hidden = true;
+      }
+
+      // Gamepad players see which way to push the right stick for each blessing (Jesus dims when only one slot is left).
+      const showWheel = s.deviceType === 'gamepad' && !pr.active && pr.remaining > 0;
+      s.wheel.hidden = !showWheel;
+      if (showWheel) {
+        s.wheel.classList.toggle('no-jesus', pr.remaining < (PRAYER.cost?.jesus ?? 1));
+        s.wheel.dataset.state = state;
       }
 
       // Fill crossbar horizontally with warm gold light (width 0..58 inside viewBox x=19..77).

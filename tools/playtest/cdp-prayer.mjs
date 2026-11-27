@@ -559,6 +559,21 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   assert.equal(rstickRes.receiverId, rstickRes.expectedSouth, `browser gamepad LT autopilot aim pass: ${JSON.stringify(rstickRes)}`);
   await advance(17, 2);
 
+  // The right-stick prayer wheel shows for the gamepad player only, and dims Jesus once only one slot is left.
+  await advance(17, 2);
+  const wheel = await evaluate(`({
+    w0: document.querySelector('#prayer-0 .prayer-wheel').hidden,
+    w1: document.querySelector('#prayer-1 .prayer-wheel').hidden,
+    icons: [...document.querySelectorAll('#prayer-1 .pw-icon')].every(i => i.complete && i.naturalWidth > 0),
+  })`);
+  assert.deepEqual(wheel, { w0: true, w1: false, icons: true }, `prayer wheel visibility: ${JSON.stringify(wheel)}`);
+  await shot('local2p-desktop-wheel');
+  await evaluate('testMatch.prayers[1].remaining = 1');
+  await advance(17, 2);
+  assert.equal(await evaluate("document.querySelector('#prayer-1 .prayer-wheel').classList.contains('no-jesus')"), true, 'Jesus dims with one slot left');
+  await evaluate('testMatch.prayers[1].remaining = 2');
+  await advance(17, 2);
+
   // Verify Local 2P idle clearance at 320x568 with BOTH human captions + emblems visible!
   await screen(320, 568, true);
   await evaluate(`localStorage.setItem('papifa.narration.v2', 'en'); window.dispatchEvent(new Event('resize'))`);

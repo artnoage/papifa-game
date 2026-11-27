@@ -62,9 +62,6 @@
 .control-columns dl { margin: 0; }
 .control-columns dt { margin-top: 16px; font-weight: 650; }
 .control-columns dd { margin: 3px 0 0; color: var(--muted); font-size: 14px; }
-.keyboard-help { margin-top: 18px; font-size: 14px; }
-.keyboard-help summary { cursor: pointer; }
-.keyboard-help p { color: var(--muted); line-height: 1.5; }
 .front-page fieldset { padding: 0; border: 0; min-inline-size: 0; }
 .level-options { display: grid; gap: 8px; margin: 30px 0 0; max-width: 360px; }
 .level-options label { display: flex; gap: 14px; align-items: center; min-height: 54px; padding: 0 18px; border: 1px solid var(--rule); border-radius: 4px; }

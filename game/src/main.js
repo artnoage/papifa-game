@@ -56,7 +56,10 @@ export function startGame({ size = 5, field = 'courtyard', devices = [defaultCon
       ? resolveLevel(params.get('level'), 'normal')
       : resolveLevel(readPreference('level.v1'), 'normal');
   let match = newMatch(initialLevel);
-  const view = createRenderer($('match-shell'), teams, { buildVenue, touchTeam: guest ? 1 : 0 });
+  const view = createRenderer($('match-shell'), teams, {
+    buildVenue, touchTeam: guest ? 1 : 0,
+    indicatorTeams: online ? [!guest, guest] : [true, true],
+  });
   const hud = createMatchHud($('match-shell'));
   const prayerHud = createPrayerHud($('match-shell'), localDevices);
   const prayerApparition = createPrayerApparition($('match-shell'));

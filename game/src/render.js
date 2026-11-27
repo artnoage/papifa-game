@@ -84,6 +84,8 @@ export function createRenderer(container, teams = TEAMS, opts = {}) {
   });
   const arrowWhite = new THREE.Color(0xffffff);
   let controlArrows = [null, null];
+  // Online, each player sees only their own priest's ring, marker and arrow (the opponent's would give away his aim).
+  const indicatorTeams = opts.indicatorTeams ?? [true, true];
   // The venues tone-map lit surfaces. Unlit overlays (rings, markers, reticle, prayer effects, nets,
   // banners) keep their authored colours, so they stay exactly as readable as before. New objects
   // are flagged before their first draw: rescan whenever the scene's top-level children change.
@@ -408,7 +410,7 @@ export function createRenderer(container, teams = TEAMS, opts = {}) {
     const bob = 0.12 * Math.sin(performance.now() / 180);
     for (let i = 0; i < humanIndicators.length; i++) {
       const h = humans[i], ind = humanIndicators[i];
-      if (h && m.phase !== 'over') {
+      if (h && indicatorTeams[i] && m.phase !== 'over') {
         const hSlot = m.players.indexOf(h);
         const hRiding = isRidingSlot(m, hSlot);
         ind.ring.position.set(h.pos.x, 0.02, h.pos.z);
@@ -429,7 +431,7 @@ export function createRenderer(container, teams = TEAMS, opts = {}) {
     if (opening) openingCamera();
     else {
       updateBroadcastCamera(m, dt);
-      indicatePlayer(m.phase === 'play' ? humans : null, camera);
+      indicatePlayer(m.phase === 'play' ? humans.map((h, i) => (indicatorTeams[i] ? h : null)) : null, camera);
     }
     if (!opening && m.phase === 'play' && dt > 0) pitchTarget.redraw();
     else pitchTarget.hide();

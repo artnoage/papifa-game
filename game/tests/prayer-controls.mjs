@@ -67,14 +67,16 @@ const dt = 1 / 60;
   assert.equal(m.prayers[0].active, 'mary');
   assert.equal(m.prayers[0].remaining, 0);
 
-  // Numpad1, Digit2, Digit3 and Numpad3 also emit prayerJesus / prayerMary / prayerGeorge.
+  // Numpad1, Digit2, Digit3/Numpad3 and Digit4/Numpad4 also emit prayerJesus / prayerMary / prayerGeorge / prayerPhanourios.
   key('Numpad1', 'keydown'); assert.equal(kb.poll().prayerJesus, true); kb.clearActions(); key('Numpad1', 'keyup');
   key('Digit2', 'keydown'); assert.equal(kb.poll().prayerMary, true); kb.clearActions(); key('Digit2', 'keyup');
   key('Digit3', 'keydown'); assert.equal(kb.poll().prayerGeorge, true); kb.clearActions(); key('Digit3', 'keyup');
   key('Numpad3', 'keydown'); assert.equal(kb.poll().prayerGeorge, true); kb.clearActions(); key('Numpad3', 'keyup');
+  key('Digit4', 'keydown'); assert.equal(kb.poll().prayerPhanourios, true); kb.clearActions(); key('Digit4', 'keyup');
+  key('Numpad4', 'keydown'); assert.equal(kb.poll().prayerPhanourios, true); kb.clearActions(); key('Numpad4', 'keyup');
 }
 
-// 2. Gamepad prayer wheel on the right stick: hold left = Jesus, right = Mary, up = St George (flag only for now).
+// 2. Gamepad prayer wheel on the right stick: hold left = Jesus, right = Mary, up = St George, down = St Phanourios.
 // The hold charges the cross; when it is full the held prayer fires. Light pushes, diagonals, LT and LB never pray.
 {
   const events = new EventTarget();
@@ -126,9 +128,18 @@ const dt = 1 / 60;
   gp.clearActions();
   assert.equal(m.prayers[0].active, 'george', 'right stick up activates St George');
   assert.ok(m.prayers[0].riderSlot >= 0, 'St George assigns riderSlot');
+  // Right stick down fires St Phanourios end-to-end when ready.
+  pad.axes = [0, 0, 0, 0]; gp.poll(); gp.clearActions();
+  m.prayers[0].active = null; m.prayers[0].timeLeft = 0; m.prayers[0].riderSlot = -1; m.prayers[0].remaining = 1; m.prayers[0].ready = true;
   pad.axes = [0, 0, 0, 1];
   inp = gp.poll();
-  assert.equal(inp.prayerHeld || inp.prayerJesus || inp.prayerMary || inp.prayerGeorge, false, 'right stick down is free for now');
+  assert.equal(inp.prayerPhanourios, true, 'right stick down sets prayerPhanourios');
+  assert.equal(inp.prayerHeld, true);
+  assert.equal(inp.prayerJesus || inp.prayerMary || inp.prayerGeorge, false);
+  step(m, inp, dt);
+  gp.clearActions();
+  assert.equal(m.prayers[0].active, 'phanourios', 'right stick down activates St Phanourios');
+  assert.equal(m.prayers[0].remaining, 0);
 }
 
 console.log('Prayer keyboard and gamepad controls tests passed.');

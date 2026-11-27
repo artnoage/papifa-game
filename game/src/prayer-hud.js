@@ -1,6 +1,6 @@
 // Prayer HUD: dignified SVG hand affectionately holding a cross (top-left team 0, top-right team 1),
-// crossbar gold charge fill, 2 remaining prayer beads/crosses, pulsing ready prompt, and 15 s active aura + countdown ring.
-import { PRAYER } from './config.js';
+// crossbar gold charge fill, 2 remaining prayer beads/crosses, pulsing ready prompt, and active aura + countdown ring.
+import { PRAYER, prayerDuration } from './config.js';
 
 const RING_R = 43;
 const RING_C = 2 * Math.PI * RING_R;
@@ -129,7 +129,7 @@ export function prayerIdleCaption(deviceType, langPref = 'en', { narrow = false,
     : (narrow ? 'Pray for a blessing' : 'Pray to receive a blessing');
   let hint = '';
   if (deviceType === 'keyboard') hint = lang === 'el' ? 'κράτα R' : 'hold R';
-  else if (deviceType === 'gamepad') hint = lang === 'el' ? 'κράτα δεξί μοχλό ◀ / ▲ / ▶' : 'hold right stick ◀ / ▲ / ▶';
+  else if (deviceType === 'gamepad') hint = lang === 'el' ? 'κράτα δεξί μοχλό ◀ / ▲ / ▶ / ▼' : 'hold right stick ◀ / ▲ / ▶ / ▼';
   else if (deviceType === 'touch') hint = lang === 'el' ? 'κράτα Προσευχή' : 'hold Pray';
   return hint ? { title, hint } : null;
 }
@@ -146,9 +146,9 @@ export function createPrayerHud(root, devices = []) {
   // Jesus uses both prayer slots, so with one slot left the prompt leaves him out.
   const promptFor = (team, jesus = true) => {
     const dev = devices[team]?.type;
-    if (dev === 'gamepad') return jesus ? '◀ Jesus · ▲ George · ▶ Mary' : '▲ George · ▶ Mary';
+    if (dev === 'gamepad') return jesus ? '◀ Jesus · ▲ George · ▶ Mary · ▼ Phanourios' : '▲ George · ▶ Mary · ▼ Phanourios';
     if (dev === 'touch') return '';
-    if (dev === 'keyboard') return jesus ? '1 Jesus · 2 Mary · 3 George' : '2 Mary · 3 George';
+    if (dev === 'keyboard') return jesus ? '1 Jesus · 2 Mary · 3 George · 4 Phanourios' : '2 Mary · 3 George · 4 Phanourios';
     return '';
   };
 
@@ -176,6 +176,7 @@ export function createPrayerHud(root, devices = []) {
             <img class="pw-icon pw-jesus" src="assets/ui/icon_christ.webp" alt="">
             <span class="pw-stick">R</span>
             <img class="pw-icon pw-mary" src="assets/ui/icon_mary.webp" alt="">
+            <img class="pw-icon pw-phanourios" src="assets/ui/icon_phanourios.webp" alt="">
           </div>
         </div>
       </div>
@@ -216,6 +217,7 @@ export function createPrayerHud(root, devices = []) {
       if (pr.active === 'jesus') state = 'jesus';
       else if (pr.active === 'mary') state = 'mary';
       else if (pr.active === 'george') state = 'george';
+      else if (pr.active === 'phanourios') state = 'phanourios';
       else if (pr.ready) state = 'ready';
       else if (pr.charging || pr.charge > 0.005) state = 'charging';
       else if (pr.remaining <= 0) state = 'spent';
@@ -253,13 +255,13 @@ export function createPrayerHud(root, devices = []) {
       s.clipRect.setAttribute('x', (48 - barWidth / 2).toFixed(2));
       s.clipRect.setAttribute('width', barWidth.toFixed(2));
 
-      // Countdown ring during active 15 s prayer.
+      // Countdown ring while a blessing is active (each kind lasts its own time).
       if (pr.active) {
-        const frac = Math.max(0, Math.min(1, pr.timeLeft / PRAYER.duration));
+        const frac = Math.max(0, Math.min(1, pr.timeLeft / prayerDuration(pr.active)));
         s.ringFg.setAttribute('stroke-dashoffset', (RING_C * (1 - frac)).toFixed(2));
         s.timer.textContent = `${Math.ceil(pr.timeLeft)}s`;
         s.timer.hidden = false;
-        s.status.textContent = pr.active === 'jesus' ? 'Jesus' : pr.active === 'mary' ? 'Mary' : 'St George';
+        s.status.textContent = pr.active === 'jesus' ? 'Jesus' : pr.active === 'mary' ? 'Mary' : pr.active === 'phanourios' ? 'St Phanourios' : 'St George';
         s.status.hidden = false;
       } else if (pr.ready) {
         s.ringFg.setAttribute('stroke-dashoffset', '0');

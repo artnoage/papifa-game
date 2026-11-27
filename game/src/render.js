@@ -35,6 +35,21 @@ export function createRenderer(container, teams = TEAMS, opts = {}) {
   const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(BALL.visualRadius ?? BALL.radius, 2), new THREE.MeshStandardMaterial({ map: ballTexture(), roughness: 0.5 }));
   ball.castShadow = true;
   scene.add(ball);
+  // St Phanourios: a warm golden glow around the ball while he is drawing it to his team.
+  const foundGlow = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d'), grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,236,170,1)'); grad.addColorStop(0.35, 'rgba(255,190,90,0.55)'); grad.addColorStop(1, 'rgba(255,160,60,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(c), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+    sprite.scale.setScalar(1.5);
+    sprite.visible = false;
+    scene.add(sprite);
+    return sprite;
+  })();
 
   // Each human-controlled priest gets a ground ring and bobbing overhead marker in their team's colour.
   // Team 0 is added first so single-player tests searching for the first ring/cone continue to find team 0.
@@ -300,6 +315,7 @@ export function createRenderer(container, teams = TEAMS, opts = {}) {
 
   function renderReplay(dt) {
     indicatePlayer(null);
+    foundGlow.visible = false; foundGlow.material.opacity = 0;
     const r = replay;
     r.t += dt * REPLAY_RATE;
     while (r.i < r.frames.length - 2 && r.frames[r.i + 1].t <= r.t) r.i++;
@@ -377,6 +393,14 @@ export function createRenderer(container, teams = TEAMS, opts = {}) {
     recordSpringTiming(springTiming, views, springsEnabled, springsEnabled ? performance.now() - tSpr0 : 0);
     const b = m.ball;
     const held = placeVisualBall(b.pos, ballProxy.ownerSlot, m.ball.owner, dt, false);
+    const glowTarget = !held && !opening && b.foundBy != null ? 0.9 : 0;
+    const glowMat = foundGlow.material;
+    glowMat.opacity += (glowTarget - glowMat.opacity) * (1 - Math.exp(-(glowTarget > glowMat.opacity ? 14 : 5) * Math.max(dt, 0)));
+    foundGlow.visible = glowMat.opacity > 0.02;
+    if (foundGlow.visible) {
+      foundGlow.position.copy(ball.position);
+      foundGlow.scale.setScalar(1.35 + 0.15 * Math.sin(performance.now() / 120));
+    }
     const sp = Math.hypot(b.vel.x, b.vel.z);
     if (!held && sp > 0.05) ball.rotateOnWorldAxis(new THREE.Vector3(b.vel.z, 0, -b.vel.x).normalize(), (sp * dt) / (BALL.visualRadius ?? BALL.radius));
 

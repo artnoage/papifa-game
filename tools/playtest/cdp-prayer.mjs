@@ -36,6 +36,7 @@ const HUD_CLEARANCE_JS = `(() => {
     visibleRect('[data-prayer-choice="jesus"]'),
     visibleRect('[data-prayer-choice="george"]'),
     visibleRect('[data-prayer-choice="mary"]'),
+    visibleRect('[data-prayer-choice="phanourios"]'),
   ].filter(Boolean);
   const overlaps = [];
   for (let i = 0; i < boxes.length; i++) {
@@ -208,7 +209,7 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   assert.equal(readyState.state, 'ready');
   assert.equal(readyState.ready, true);
   assert.equal(readyState.remaining, 2);
-  assert.equal(readyState.status, '1 Jesus · 2 Mary · 3 George');
+  assert.equal(readyState.status, '1 Jesus · 2 Mary · 3 George · 4 Phanourios');
   assert.ok(readyState.fontSize >= 18, `ready prompt fontSize ${readyState.fontSize} >= 18px`);
   assert.equal(readyState.passesAfter, passesBefore, 'releasing R after charging did not pass');
   await assertClearance('desktop-ready', 105);
@@ -248,7 +249,7 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   assert.equal(jesusActive.state, 'jesus');
   assert.equal(jesusActive.active, 'jesus');
   assert.equal(jesusActive.remaining, 0, 'Jesus uses both prayer slots');
-  assert.ok(jesusActive.timer.includes('15s') || jesusActive.timer.includes('14s'), `timer=${jesusActive.timer}`);
+  assert.ok(jesusActive.timer.includes('10s') || jesusActive.timer.includes('9s'), `Jesus lasts 10 s: timer=${jesusActive.timer}`);
   assert.ok(jesusActive.imgW >= 256, `Christ icon WebP loaded: naturalWidth=${jesusActive.imgW}`);
   assert.ok(jesusActive.stageBottom <= jesusActive.vh * 0.36, `Christ icon stays in top third: bottom=${jesusActive.stageBottom}/${jesusActive.vh}`);
   await assertClearance('desktop-jesus-active', 105);
@@ -392,7 +393,7 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   assert.equal(clashBannerEl, 'Ο καθένας είναι το αγαπημένο παιδί του Θεού!', `clash banner EL: ${clashBannerEl}`);
   await evaluate(`localStorage.setItem('papifa.narration.v2', 'en')`);
 
-  // ---------- 2b. St George on Horseback: Digit3 -> Byzantine icon + mounted white horse gallop + tackle dismount ----------
+  // ---------- 2b. St George on Horseback: Digit3 -> Byzantine icon + mounted white horse gallop + a tackle only knocks the horse away ----------
   await evaluate(`(() => {
     const h = testMatch.human;
     h.pos = { x: -4, z: 0 }; h.vel = { x: 0, z: 0 }; h.facing = 0; h.stamina = 1;
@@ -450,21 +451,97 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   await key('keyUp', 'KeyD', 'd', 68);
   await key('keyUp', 'ShiftLeft', 'Shift', 16);
 
-  // Defender tackle knocks the rider off the horse and ends St George early!
+  // A defender's tackle knocks the horse away (St George ends early), but the rider is thrown ~2 m on and keeps the ball.
   const dismounted = await evaluate(`(async () => {
     const { tackle } = await import('./src/sim.js');
     const rider = testMatch.players[testMatch.prayers[0].riderSlot];
     const def = testMatch.players.find((p) => p.team === 1 && !p.isGK);
-    def.pos = { x: rider.pos.x + 1.0, z: rider.pos.z }; def.facing = Math.PI;
+    rider.vel = { x: 0, z: 0 }; rider.facing = 0;
+    rider.pos = { x: 0, z: 0 };
+    for (const p of testMatch.players) if (p !== rider && p !== def) p.pos = { x: p.team === 0 ? -20 : 20, z: p.pos.z };
+    def.pos = { x: rider.pos.x + 0.9, z: rider.pos.z + 0.9 }; def.facing = Math.PI;
     testMatch.ball.owner = rider; testMatch.ball.pos = { x: rider.pos.x + 0.75, y: 0.3, z: rider.pos.z };
+    const from = { ...rider.pos };
     const origRand = testMatch.rand;
     testMatch.rand = () => 0;
     tackle(testMatch, def);
     testMatch.rand = origRand;
-    return { active: testMatch.prayers[0].active, riderSlot: testMatch.prayers[0].riderSlot };
+    return {
+      active: testMatch.prayers[0].active, riderSlot: testMatch.prayers[0].riderSlot,
+      keeps: testMatch.ball.owner === rider, moved: Math.hypot(rider.pos.x - from.x, rider.pos.z - from.z), stun: rider.stun,
+    };
   })()`);
-  assert.equal(dismounted.active, null, 'tackle knocks St George rider off early');
+  assert.equal(dismounted.active, null, 'tackle knocks the horse away and ends St George early');
   assert.equal(dismounted.riderSlot, -1);
+  assert.equal(dismounted.keeps, true, `the thrown rider keeps the ball: ${JSON.stringify(dismounted)}`);
+  assert.ok(dismounted.moved > 1.5 && dismounted.moved <= 2.01, `rider thrown ~2 m: ${dismounted.moved}`);
+  assert.equal(dismounted.stun, 0);
+
+  // ---------- 2c. St Phanourios: Digit4 -> icon + banner + a loose ball curves to the team, glowing ----------
+  await evaluate(`(() => {
+    const h = testMatch.human;
+    h.pos = { x: -4, z: 0 }; h.vel = { x: 0, z: 0 }; h.facing = 0;
+    testMatch.ball.owner = h; testMatch.ball.pos = { x: -3.25, y: 0.3, z: 0 }; testMatch.ball.vel = { x: 0, y: 0, z: 0 };
+    for (const p of testMatch.players) if (p !== h && !p.isGK) p.pos = { x: p.team === 0 ? -20 : 20, z: p.pos.z };
+    testMatch.prayers[0].remaining = 2; testMatch.prayers[0].ready = true; testMatch.prayers[0].active = null; testMatch.prayers[0].riderSlot = -1;
+    document.querySelector('#banner').textContent = '';
+  })()`);
+  await advance(17, 2);
+  await key('keyDown', 'Digit4', '4', 52);
+  await advance(17, 1);
+  await key('keyUp', 'Digit4', '4', 52);
+  // Knock the ball loose 6 m ahead of the priest and freeze him: St Phanourios brings it back.
+  await evaluate(`(() => {
+    const h = testMatch.human;
+    testMatch.ball.owner = null; testMatch.ball.receiver = null; testMatch.ball.shot = null;
+    testMatch.ball.clashDrop = false; testMatch.ball.clashHoldT = 0; testMatch.ball.inNet = false;
+    testMatch.ball.pos = { x: 2, y: 0.3, z: 1.5 }; testMatch.ball.vel = { x: 0, y: 0, z: 0 };
+    window.__phanDbg = () => ({ phase: testMatch.phase, owner: testMatch.ball.owner?.info?.id ?? null, pos: testMatch.ball.pos, stun: h.stun, active: testMatch.prayers[0].active });
+    window.__phanHold = () => { h.pos = { x: -4, z: 0 }; h.vel = { x: 0, z: 0 }; };
+  })()`);
+  let phanGlow = false;
+  for (let i = 0; i < 16; i++) {
+    await evaluate('window.__phanHold()');
+    await advance(50, 1);
+    if (await evaluate('testMatch.ball.foundBy === 0')) phanGlow = true;
+  }
+  if (out) await shot('desktop-phanourios-pull');
+  let phanFound = false;
+  for (let i = 0; i < 40 && !phanFound; i++) {
+    await evaluate('window.__phanHold()');
+    await advance(50, 1);
+    phanFound = await evaluate('testMatch.ball.owner === testMatch.human');
+  }
+  const phanDesktop = await evaluate(`(async () => {
+    const app = document.querySelector('#prayer-apparition-0');
+    const img = app.querySelector('.apparition-img');
+    if (img && (!img.complete || img.naturalWidth === 0)) await img.decode().catch(() => {});
+    return {
+      hudState: document.querySelector('#prayer-0').dataset.state,
+      status: document.querySelector('#prayer-0 .prayer-status').textContent,
+      active: testMatch.prayers[0].active, remaining: testMatch.prayers[0].remaining,
+      timeLeft: testMatch.prayers[0].timeLeft,
+      appKind: app.dataset.kind, appHidden: app.hidden,
+      banner: app.querySelector('.apparition-banner').textContent,
+      imgW: img ? img.naturalWidth : 0,
+      ballDist: Math.hypot(testMatch.ball.pos.x + 4, testMatch.ball.pos.z),
+    };
+  })()`);
+  assert.equal(phanDesktop.active, 'phanourios', `Digit4 starts St Phanourios: ${JSON.stringify(phanDesktop)}`);
+  assert.equal(phanDesktop.remaining, 1);
+  assert.equal(phanDesktop.hudState, 'phanourios');
+  assert.equal(phanDesktop.status, 'St Phanourios');
+  assert.ok(phanDesktop.timeLeft > 13 && phanDesktop.timeLeft <= 15, `15 s blessing: ${phanDesktop.timeLeft}`);
+  assert.equal(phanDesktop.appHidden, false);
+  assert.equal(phanDesktop.appKind, 'phanourios');
+  assert.equal(phanDesktop.banner, 'St Phanourios is with you!');
+  assert.ok(phanDesktop.imgW >= 256, `St Phanourios icon loaded: ${phanDesktop.imgW}`);
+  assert.ok(phanGlow, `the loose ball is marked as found (glowing) while it curves in: ${JSON.stringify(await evaluate('window.__phanDbg()'))}`);
+  assert.ok(phanFound, `the loose ball rolled back to the priest (now ${phanDesktop.ballDist.toFixed(2)} m away)`);
+  await assertClearance('desktop-phanourios', 105);
+  await shot('desktop-phanourios-active');
+  await shotEmblem('emblem-phanourios', '#prayer-0');
+  await evaluate(`delete window.__phanHold; delete window.__phanDbg`);
   await evaluate(`localStorage.removeItem('papifa.narration.v2')`);
 
   // Desktop spent state: both emblems stay visible, greyed/desaturated (~0.5 opacity), caption hidden.
@@ -565,8 +642,14 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
     w0: document.querySelector('#prayer-0 .prayer-wheel').hidden,
     w1: document.querySelector('#prayer-1 .prayer-wheel').hidden,
     icons: [...document.querySelectorAll('#prayer-1 .pw-icon')].every(i => i.complete && i.naturalWidth > 0),
+    count: document.querySelectorAll('#prayer-1 .pw-icon').length,
+    below: (() => {
+      const st = document.querySelector('#prayer-1 .pw-stick').getBoundingClientRect();
+      const ph = document.querySelector('#prayer-1 .pw-phanourios').getBoundingClientRect();
+      return ph.top >= st.bottom - 1 && Math.abs((ph.left + ph.right) / 2 - (st.left + st.right) / 2) < 3;
+    })(),
   })`);
-  assert.deepEqual(wheel, { w0: true, w1: false, icons: true }, `prayer wheel visibility: ${JSON.stringify(wheel)}`);
+  assert.deepEqual(wheel, { w0: true, w1: false, icons: true, count: 4, below: true }, `prayer wheel visibility: ${JSON.stringify(wheel)}`);
   await shot('local2p-desktop-wheel');
   await evaluate('testMatch.prayers[1].remaining = 1');
   await advance(17, 2);
@@ -591,7 +674,7 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   assert.equal(l2pIdle.t0, 'Pray for a blessing');
   assert.equal(l2pIdle.h0, 'hold R');
   assert.equal(l2pIdle.t1, 'Pray for a blessing');
-  assert.equal(l2pIdle.h1, 'hold right stick ◀ / ▲ / ▶');
+  assert.equal(l2pIdle.h1, 'hold right stick ◀ / ▲ / ▶ / ▼');
   await assertClearance('local2p-320-idle', 56);
   await shot('local2p-320-idle');
   await screen(1280, 800, false);
@@ -629,6 +712,16 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   assert.equal(padGeorge.active, 'george', `Gamepad right stick UP activates St George: ${JSON.stringify(padGeorge)}`);
   assert.ok(padGeorge.riderSlot >= 0);
   assert.equal(padGeorge.state, 'george');
+
+  // And right stick DOWN asks St Phanourios.
+  await evaluate(`(() => { const pr = testMatch.prayers[1]; pr.active = null; pr.timeLeft = 0; pr.riderSlot = -1; pr.ready = false; pr.charge = 0; pr.remaining = 2; })()`);
+  await advance(17, 2);
+  await evaluate('window.__virtualPads[0].axes = [0, 0, 0, 1]');
+  await advance(50, 44);
+  await evaluate('window.__virtualPads[0].axes = [0, 0, 0, 0]');
+  await advance(17, 2);
+  const padPhan = await evaluate('({ active: testMatch.prayers[1].active, state: document.querySelector("#prayer-1").dataset.state })');
+  assert.deepEqual(padPhan, { active: 'phanourios', state: 'phanourios' }, `Gamepad right stick DOWN activates St Phanourios: ${JSON.stringify(padPhan)}`);
 
   // Also check 320x568 portrait clearance with BOTH prayer badges active AND both shot meters visible (>= 56 px emblem)!
   await screen(320, 568, true);
@@ -706,11 +799,17 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
     jesusW: Math.round(document.querySelector('[data-prayer-choice="jesus"]').getBoundingClientRect().width),
     georgeW: Math.round(document.querySelector('[data-prayer-choice="george"]').getBoundingClientRect().width),
     maryW: Math.round(document.querySelector('[data-prayer-choice="mary"]').getBoundingClientRect().width),
+    phanW: Math.round(document.querySelector('[data-prayer-choice="phanourios"]').getBoundingClientRect().width),
+    offscreen: [...document.querySelectorAll('[data-prayer-choice], .touch-actions [data-control]')].filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1;
+    }).map((el) => el.dataset.prayerChoice ?? el.dataset.control),
   })`);
   assert.equal(touchReady.state, 'ready');
+  assert.deepEqual(touchReady.offscreen, [], `every touch control stays on screen: ${JSON.stringify(touchReady.offscreen)}`);
   assert.equal(touchReady.choicesHidden, false, 'Touch Jesus, George & Mary buttons appear when prayer is full');
   assert.equal(touchReady.statusHidden, true, 'Touch ready prompt uses the buttons themselves, no extra text pill');
-  assert.ok(touchReady.jesusW >= 70 && touchReady.georgeW >= 70 && touchReady.maryW >= 70, `Touch Jesus/George/Mary buttons properly sized: ${JSON.stringify(touchReady)}`);
+  assert.ok(touchReady.jesusW >= 64 && touchReady.georgeW >= 64 && touchReady.maryW >= 64 && touchReady.phanW >= 64, `Touch Jesus/George/Mary/Phanourios buttons properly sized: ${JSON.stringify(touchReady)}`);
   await assertClearance('touch-390-ready', 72);
   await shot('touch-390-ready');
   await shotEmblem('emblem-touch-choices', '#touch-prayer-choices');
@@ -720,19 +819,21 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   await evaluate(`window.dispatchEvent(new Event('resize'))`);
   await advance(17, 6);
   await assertClearance('touch-430-ready', 72);
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-prayer-choice], .touch-actions [data-control]')].filter((el) => { const r = el.getBoundingClientRect(); return r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1; }).map((el) => el.dataset.prayerChoice ?? el.dataset.control)`), [], 'touch-430-ready: every touch control stays on screen');
   await shot('touch-430-ready');
   // Also check 320x568 with enlarged touch choice buttons visible (must clear joystick & action buttons!).
   await screen(320, 568, true);
   await evaluate(`window.dispatchEvent(new Event('resize'))`);
   await advance(17, 4);
   await assertClearance('touch-320-ready', 56);
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-prayer-choice], .touch-actions [data-control]')].filter((el) => { const r = el.getBoundingClientRect(); return r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1; }).map((el) => el.dataset.prayerChoice ?? el.dataset.control)`), [], 'touch-320-ready: every touch control stays on screen');
   await shot('touch-320-ready');
   await screen(390, 844, true);
   await evaluate(`window.dispatchEvent(new Event('resize'))`);
   await advance(17, 3);
 
   // Tap [data-prayer-choice="george"] -> St George active at 390x844 (capture touch-390-george during icon hold!).
-  // Freeze the opponents for the check: a tackle on the new rider would knock him off (and end the prayer) mid-assert.
+  // Freeze the opponents for the check: a tackle on the new rider would knock the horse away (and end the prayer) mid-assert.
   await evaluate(`for (const p of testMatch.players) if (p.team === 1) p.stun = 3; void 0`);
   const georgeBtnPt = await evaluate(`(() => { const r = document.querySelector('[data-prayer-choice="george"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, id: 3 }; })()`);
   await fingers('touchStart', georgeBtnPt);
@@ -743,6 +844,18 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   assert.ok(await evaluate(`testMatch.prayers[0].riderSlot >= 0`), 'Touch George mounted rider');
   await assertClearance('touch-390-george', 72);
   await shot('touch-390-george');
+
+  // Re-ready -> tap [data-prayer-choice="phanourios"] -> St Phanourios active (one slot used).
+  await evaluate(`(() => { const pr = testMatch.prayers[0]; pr.active = null; pr.timeLeft = 0; pr.riderSlot = -1; pr.ready = true; pr.charge = 1; pr.remaining = 2; })()`);
+  await advance(17, 2);
+  const phanBtnPt = await evaluate(`(() => { const r = document.querySelector('[data-prayer-choice="phanourios"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, id: 5 }; })()`);
+  await fingers('touchStart', phanBtnPt);
+  await fingers('touchEnd');
+  await advance(50, 16);
+  const touchPhan = await evaluate(`({ state: document.querySelector('#prayer-0').dataset.state, remaining: testMatch.prayers[0].remaining, choicesHidden: document.querySelector('#touch-prayer-choices').hidden })`);
+  assert.deepEqual(touchPhan, { state: 'phanourios', remaining: 1, choicesHidden: true }, `Touch Phanourios: ${JSON.stringify(touchPhan)}`);
+  await assertClearance('touch-390-phanourios', 72);
+  await shot('touch-390-phanourios');
 
   // Re-ready remaining 1 prayer -> tap [data-prayer-choice="mary"] -> Mary active at 390x844 & 320x568!
   await evaluate(`(() => { const pr = testMatch.prayers[0]; pr.active = null; pr.timeLeft = 0; pr.ready = true; pr.charge = 1; })()`);
@@ -838,5 +951,5 @@ export async function runPrayerPlaytest({ url, out, send, evaluate, shot }) {
   assert.equal(urlGeorge.hudState, 'george');
   await shot('desktop-george-url');
 
-  console.log('All browser prayer checks (idle/charging/ready/jesus/george/mary/spent, ?prayer=george, captions, keyboard, gamepad, touch, local 2P, replay, 320/390/430/1280px clearance) passed.');
+  console.log('All browser prayer checks (idle/charging/ready/jesus/george/phanourios/mary/spent, ?prayer=george, captions, keyboard, gamepad, touch, local 2P, replay, 320/390/430/1280px clearance) passed.');
 }

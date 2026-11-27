@@ -4,7 +4,7 @@
 // independent local 2P praying, and prayers-disabled bit-identity.
 import assert from 'node:assert/strict';
 import { createMatch, step, kickoff, shoot, chip, choosePrayer, isGeorgeRider, tackle, slideTackle } from '../src/sim.js';
-import { AI_LEVELS, BALL, PITCH, PLAYER, PRAYER } from '../src/config.js';
+import { AI_LEVELS, BALL, PITCH, PLAYER, PRAYER, prayerDuration } from '../src/config.js';
 
 const dt = 1 / 60;
 const idle = { move: { x: 0, z: 0 } };
@@ -59,8 +59,10 @@ function chargeToReady(m, team, inputBuilder = null) {
 
 // 2. Counts: 2 slots per match; Jesus uses both, Mary and St George one each. Any legal mix, cannot charge
 // while active, nothing once the slots are spent; with one slot left Jesus is refused and the prayer stays ready.
-const COST = { jesus: 2, mary: 1, george: 1 };
-for (const mix of [['jesus'], ['mary', 'mary'], ['george', 'mary'], ['mary', 'george'], ['mary', 'jesus', 'george']]) {
+const COST = { jesus: 2, mary: 1, george: 1, phanourios: 1 };
+assert.deepEqual(PRAYER.cost, COST);
+assert.deepEqual(PRAYER.durations, { jesus: 10, mary: 12, george: 15, phanourios: 15 });
+for (const mix of [['jesus'], ['mary', 'mary'], ['george', 'mary'], ['mary', 'george'], ['mary', 'jesus', 'george'], ['phanourios', 'george'], ['mary', 'phanourios']]) {
   const m = createMatch(200);
   // Keep opponents away so no goals interrupt the 15 s waits.
   for (const p of m.players) if (p.team === 1 && !p.isGK) p.pos = { x: 25, z: p.pos.z };
@@ -69,7 +71,7 @@ for (const mix of [['jesus'], ['mary', 'mary'], ['george', 'mary'], ['mary', 'ge
     const kind = mix[idx];
     if (!m.prayers[0].ready) chargeToReady(m, 0);
     assert.equal(m.prayers[0].ready, true);
-    step(m, { ...idle, prayerJesus: kind === 'jesus', prayerMary: kind === 'mary', prayerGeorge: kind === 'george' }, dt);
+    step(m, { ...idle, prayerJesus: kind === 'jesus', prayerMary: kind === 'mary', prayerGeorge: kind === 'george', prayerPhanourios: kind === 'phanourios' }, dt);
     if (COST[kind] > left) {
       assert.equal(m.prayers[0].active, null, `mix ${mix.join('+')}[${idx}]: ${kind} refused with ${left} slot left`);
       assert.equal(m.prayers[0].ready, true, 'a refused choice keeps the prayer ready');
@@ -79,7 +81,7 @@ for (const mix of [['jesus'], ['mary', 'mary'], ['george', 'mary'], ['mary', 'ge
     left -= COST[kind];
     assert.equal(m.prayers[0].active, kind, `mix ${mix.join('+')}[${idx}] active`);
     assert.equal(m.prayers[0].remaining, left);
-    assert.ok(m.prayers[0].timeLeft > PRAYER.duration - 0.1);
+    assert.ok(Math.abs(m.prayers[0].timeLeft - prayerDuration(kind)) < 0.1, `${kind} lasts ${prayerDuration(kind)} s`);
     const ev = m.events.find((e) => e.type === 'prayer' && e.team === 0);
     assert.deepEqual({ type: ev?.type, team: ev?.team, kind: ev?.kind, human: ev?.human }, { type: 'prayer', team: 0, kind, human: true });
 
@@ -87,13 +89,15 @@ for (const mix of [['jesus'], ['mary', 'mary'], ['george', 'mary'], ['mary', 'ge
     for (let i = 0; i < 60; i++) step(m, { ...idle, prayerHeld: true }, dt);
     assert.equal(m.prayers[0].charge, 0, 'cannot charge while active');
     assert.equal(m.prayers[0].ready, false);
-    // Expire active prayer after 15 s total.
-    for (let i = 0; i < 60 * 15; i++) {
+    // Expire the active prayer after its own duration (George may end early if his rider is tackled).
+    let lasted = 1;
+    for (let i = 0; i < 60 * 16; i++, lasted++) {
       if (m.phase === 'goal') kickoff(m, 0);
       step(m, idle, dt);
       if (m.prayers[0].active === null) break;
     }
-    assert.equal(m.prayers[0].active, null, `${kind} expires after 15 s`);
+    assert.equal(m.prayers[0].active, null, `${kind} expires`);
+    if (kind !== 'george') assert.ok(Math.abs((lasted + 60) * dt - prayerDuration(kind)) < 0.1, `${kind} expired after ${((lasted + 60) * dt).toFixed(2)} s`);
     assert.equal(m.prayers[0].timeLeft, 0);
   }
   // Slots spent: holding never charges, choosing fails.
@@ -223,22 +227,22 @@ for (const mix of [['jesus'], ['mary', 'mary'], ['george', 'mary'], ['mary', 'ge
     assert.ok(g, `${mode}: Jesus shot scores`);
   }
 
-  // Jesus expires after 15 s if no shot is taken.
+  // Jesus expires after his 10 s if no shot is taken.
   const m3 = createMatch(420);
   m3.prayers[0].ready = true;
   assert.equal(choosePrayer(m3, 0, 'jesus'), true);
   // Keep ball away so no team 0 AI shoots.
   const opp = player(m3, 1, 0);
-  for (let i = 0; i < 60 * 14.9; i++) {
+  for (let i = 0; i < 60 * (PRAYER.durations.jesus - 0.1); i++) {
     m3.ball.owner = opp; opp.pos = { x: 26, z: 0 }; opp.holdT = 0;
     step(m3, idle, dt);
   }
-  assert.equal(m3.prayers[0].active, 'jesus', 'Jesus still active at 14.9 s');
+  assert.equal(m3.prayers[0].active, 'jesus', 'Jesus still active 0.1 s before the end');
   for (let i = 0; i < 12; i++) {
     m3.ball.owner = opp; opp.pos = { x: 26, z: 0 }; opp.holdT = 0;
     step(m3, idle, dt);
   }
-  assert.equal(m3.prayers[0].active, null, 'Jesus expired at 15 s');
+  assert.equal(m3.prayers[0].active, null, 'Jesus expired at 10 s');
   // Next shot after expiry is normal (not Jesus).
   m3.ball.owner = m3.human; m3.human.pos = { x: 10, z: 0 }; m3.ball.pos = { x: 10.75, y: BALL.radius, z: 0 };
   shoot(m3, m3.human, 0.5);
@@ -298,13 +302,13 @@ for (const mix of [['jesus'], ['mary', 'mary'], ['george', 'mary'], ['mary', 'ge
   assert.equal(m.score[0], 0);
   assert.equal(m.prayers[1].active, 'mary');
 
-  // Let Mary expire after 15 s, then verify a shot scores cleanly.
+  // Let Mary expire (12 s), then verify a shot scores cleanly.
   for (let i = 0; i < 60 * 15; i++) {
     m.ball.owner = null; m.ball.pos = { x: 0, y: BALL.radius, z: 0 }; m.ball.vel = { x: 0, y: 0, z: 0 };
     step(m, [idle, idle], dt);
     if (m.prayers[1].active === null) break;
   }
-  assert.equal(m.prayers[1].active, null, 'Mary expires after 15 s');
+  assert.equal(m.prayers[1].active, null, 'Mary expires after 12 s');
   m.ball.owner = null;
   m.ball.pos = { x: HL - 0.5, y: 0.8, z: 0 };
   m.ball.vel = { x: 20, y: 0, z: 0 };
@@ -470,7 +474,8 @@ for (const atk of [0, 1]) {
 }
 
 // 10. St George prayer (Task H): controlled priest rides at +30% top speed, AI chooses carrier else most advanced outfielder,
-// ball control/kicks work normally, standing & slide tackles knock rider off early, expires cleanly at 15 s, AI uses at ~Jesus rate.
+// ball control/kicks work normally, a standing or slide tackle only knocks the horse away (the rider is thrown ~2 m on
+// and keeps the ball), expires cleanly at 15 s, AI uses at ~Jesus rate.
 {
   // 10a. +30% top speed check (human controlled priest) + ball control & shooting work normally.
   const mBase = createMatch(1001, { level: 'normal' });
@@ -510,26 +515,51 @@ for (const atk of [0, 1]) {
   assert.equal(shoot(mRide, rider, 0.6, 0), true, 'rider can shoot normally');
   assert.equal(mRide.prayers[0].active, 'george', 'shooting does NOT consume St George');
 
-  // 10b. Standing tackle landing on rider knocks him off early.
+  // 10b. A standing tackle that lands on the rider knocks the horse away: St George ends, but the rider is
+  // thrown ~2 m along his run and keeps the ball; no turnover, no stun, and the tackler recovers as from a miss.
   {
     const mt = createMatch(1002);
     const rider = mt.human;
     const def = player(mt, 1, 1);
-    rider.pos = { x: 0, z: 0 }; rider.facing = 0;
-    def.pos = { x: 1.1, z: 0 }; def.facing = Math.PI;
+    for (const p of mt.players) if (p !== rider && p !== def) p.pos = { x: -20, z: p.pos.z };
+    rider.pos = { x: 0, z: 0 }; rider.vel = { x: 0, z: 0 }; rider.facing = 0;
+    def.pos = { x: 0.9, z: 0.9 }; def.facing = Math.PI;
     mt.ball.owner = rider; mt.ball.pos = { x: 0.75, y: BALL.radius, z: 0 };
     mt.prayers[0].ready = true;
     assert.equal(choosePrayer(mt, 0, 'george'), true);
     assert.equal(isGeorgeRider(mt, rider), true);
     mt.rand = () => 0; // force standing tackle to land
     tackle(mt, def);
-    assert.equal(mt.prayers[0].active, null, 'standing tackle knocks rider off and ends St George early');
+    assert.equal(mt.prayers[0].active, null, 'the horse is gone: St George ends early');
     assert.equal(mt.prayers[0].timeLeft, 0);
     assert.equal(mt.prayers[0].riderSlot, -1);
     assert.equal(isGeorgeRider(mt, rider), false);
+    assert.equal(mt.ball.owner, rider, 'the rider keeps the ball');
+    assert.ok(Math.abs(rider.pos.x - 2) < 1e-9 && Math.abs(rider.pos.z) < 1e-9, `thrown 2 m forward (${rider.pos.x}, ${rider.pos.z})`);
+    assert.equal(rider.stun, 0, 'the rider is not stunned');
+    assert.equal(def.stun, 0.35, 'the tackler recovers as from a missed tackle');
+    assert.ok(!mt.events.some((e) => e.type === 'steal'), 'no steal is recorded');
+    assert.ok(mt.events.some((e) => e.type === 'georgeThrown' && e.team === 0));
+
+    // Near the touchline the throw stays inside the walls, and never lands on another priest.
+    const me = createMatch(1012);
+    const r2 = me.human, d2 = player(me, 1, 1), block = player(me, 1, 2);
+    for (const p of me.players) if (![r2, d2, block].includes(p)) p.pos = { x: -20, z: p.pos.z };
+    step(me, [idle, idle], dt);                    // the sim works on this match's pitch
+    const HW2 = me.pitch.width / 2;
+    r2.pos = { x: 0, z: HW2 - 1 }; r2.vel = { x: 0, z: 6 }; r2.facing = Math.PI / 2;
+    d2.pos = { x: 1, z: HW2 - 1.5 };
+    block.pos = { x: 5, z: 0 };
+    me.ball.owner = r2; me.prayers[0].ready = true;
+    assert.equal(choosePrayer(me, 0, 'george'), true);
+    me.rand = () => 0;
+    tackle(me, d2);
+    assert.equal(me.ball.owner, r2);
+    assert.ok(r2.pos.z <= HW2 - PLAYER.radius - 0.3 + 1e-9, `stays inside the touchline (${r2.pos.z})`);
+    for (const q of me.players) if (q !== r2) assert.ok(Math.hypot(q.pos.x - r2.pos.x, q.pos.z - r2.pos.z) >= PLAYER.radius * 2 - 1e-9, 'never lands on a priest');
   }
 
-  // 10c. Slide tackle landing on rider knocks him off early.
+  // 10c. A slide tackle that lands on the rider also only knocks the horse away; the slider gets up as from a miss.
   {
     const ms = createMatch(1003);
     const rider = ms.human;
@@ -546,9 +576,16 @@ for (const atk of [0, 1]) {
     for (let i = 0; i < 30 && ms.prayers[0].active === 'george'; i++) {
       step(ms, [idle, idle], dt);
     }
-    assert.equal(ms.prayers[0].active, null, 'slide tackle knocks rider off and ends St George early');
+    assert.equal(ms.prayers[0].active, null, 'slide tackle knocks the horse away and ends St George early');
     assert.equal(ms.prayers[0].riderSlot, -1);
     assert.equal(isGeorgeRider(ms, rider), false);
+    assert.equal(ms.ball.owner, rider, 'the rider keeps the ball after a slide');
+    const moved = Math.hypot(rider.pos.x, rider.pos.z);
+    assert.ok(moved > 1.5 && moved <= 2 + 1e-9, `thrown ~2 m (head-on, so he veers past the slider): ${moved.toFixed(2)} m`);
+    assert.ok(Math.hypot(def.pos.x - rider.pos.x, def.pos.z - rider.pos.z) >= PLAYER.radius * 2 - 1e-9, 'not on top of the slider');
+    assert.equal(rider.stun, 0);
+    for (let i = 0; i < 90 && !def.slideDone; i++) step(ms, [idle, idle], dt);
+    assert.equal(def.stun > 0.3, true, `the slider gets up as from a miss (${def.stun})`);
   }
 
   // 10d. AI rider selection: ball carrier (if non-GK), else most advanced outfield priest.
@@ -609,6 +646,118 @@ for (const atk of [0, 1]) {
     assert.ok(georgeCount > 0, `AI actually uses St George (jesus=${jesusCount}, george=${georgeCount}, mary=${maryCount})`);
     assert.ok(jesusCount > 0 && maryCount > 0, `AI still uses Jesus & Mary (jesus=${jesusCount}, george=${georgeCount}, mary=${maryCount})`);
   }
+}
+
+// 11. St Phanourios (1 slot, 15 s): a loose ball curves toward the team's nearest outfield priest, the
+// team's receivers reach further for passes, a 'phanourios_find' event marks the find (throttled),
+// and everything is deterministic (no randomness) so online host and guest agree.
+{
+  const HLp = PITCH.length / 2;
+  // Freeze everyone in place: a loose ball 7 m from team 0's striker, nobody else nearby.
+  const setup = (seed, pray) => {
+    const m = createMatch(seed);
+    m.ball.owner = null; m.ball.receiver = null; m.ball.shot = null;
+    m.ball.pos = { x: 0, y: BALL.radius, z: 0 }; m.ball.vel = { x: 0, y: 0, z: 0 };
+    for (const p of m.players) p.pos = { x: p.team === 0 ? -HLp + 3 : HLp - 3, z: (p.slot - 2) * 4 };
+    const fw = player(m, 0, 4);
+    fw.pos = { x: -7, z: 0 };
+    if (pray) { m.prayers[0].ready = true; assert.equal(choosePrayer(m, 0, 'phanourios'), true); }
+    return { m, fw };
+  };
+  const hold = (m, fw) => { for (const p of m.players) { p.vel = { x: 0, z: 0 }; if (p !== fw) p.stun = 0.5; } fw.pos = { x: -7, z: 0 }; };
+
+  const { m, fw } = setup(1201, true);
+  assert.equal(m.prayers[0].active, 'phanourios');
+  assert.equal(m.prayers[0].remaining, 1, 'Phanourios uses one slot');
+  assert.ok(Math.abs(m.prayers[0].timeLeft - 15) < 1e-9, 'Phanourios lasts 15 s');
+  let found = null, owner = null, firstFoundBy = null;
+  for (let i = 0; i < 60 * 3 && !owner; i++) {
+    hold(m, fw);
+    step(m, idle, dt);
+    if (firstFoundBy === null && m.ball.foundBy !== null) firstFoundBy = m.ball.foundBy;
+    found ??= m.events.find((e) => e.type === 'phanourios_find');
+    owner = m.ball.owner;
+  }
+  assert.equal(firstFoundBy, 0, 'the ball is marked as found by team 0 while pulled');
+  assert.equal(owner?.team, 0, `the loose ball rolled to team 0 (owner ${owner?.info?.id})`);
+  assert.deepEqual(found, { type: 'phanourios_find', team: 0 }, 'a find event marks the possession');
+  assert.equal(m.ball.foundBy, null, 'flag clears once the ball is owned');
+
+  // Without the prayer the same loose ball stays put.
+  const base = setup(1201, false);
+  for (let i = 0; i < 60 * 3; i++) { hold(base.m, base.fw); step(base.m, idle, dt); }
+  assert.ok(Math.hypot(base.m.ball.pos.x, base.m.ball.pos.z) < 0.01 && !base.m.ball.owner, 'no prayer, no pull');
+
+  // Out of range (> 12 m) nothing happens; the pull never exceeds its speed cap.
+  const far = setup(1202, true);
+  far.fw.pos = { x: -14, z: 0 };
+  let maxSpeed = 0;
+  for (let i = 0; i < 60; i++) {
+    for (const p of far.m.players) { p.vel = { x: 0, z: 0 }; if (p !== far.fw) p.stun = 0.5; }
+    far.fw.pos = { x: -14, z: 0 };
+    step(far.m, idle, dt);
+  }
+  assert.ok(Math.hypot(far.m.ball.pos.x, far.m.ball.pos.z) < 0.01, 'a ball beyond 12 m is not pulled');
+  const fast = setup(1203, true);
+  fast.m.ball.vel = { x: -30, y: 0, z: 0 };
+  for (let i = 0; i < 20; i++) { hold(fast.m, fast.fw); step(fast.m, idle, dt); if (fast.m.ball.owner) break; maxSpeed = Math.max(maxSpeed, Math.hypot(fast.m.ball.vel.x, fast.m.ball.vel.z)); }
+  assert.ok(maxSpeed <= 30, `pull never speeds a ball up past its own speed (${maxSpeed.toFixed(2)})`);
+
+  // Shots are never bent, and the other team's balls aren't pulled toward them.
+  const shotM = setup(1204, true);
+  shotM.m.ball.shot = { team: 1, t: shotM.m.t }; shotM.m.ball.vel = { x: -10, y: 0, z: 3 };
+  hold(shotM.m, shotM.fw); step(shotM.m, idle, dt);
+  assert.equal(shotM.m.ball.foundBy, null, 'a shot is never pulled');
+
+  // Receivers of the praying team pick passes up from 1.5x further.
+  const rcv = setup(1205, true);
+  const mate = player(rcv.m, 0, 3);
+  rcv.m.ball.receiver = mate;
+  mate.pos = { x: 0, z: (BALL.pickupRadius + 0.35) * 1.4 };
+  for (const p of rcv.m.players) { p.vel = { x: 0, z: 0 }; if (p !== mate) p.stun = 0.5; }
+  step(rcv.m, idle, dt);
+  assert.equal(rcv.m.ball.owner, mate, 'boosted receiver reach');
+  const rcv2 = setup(1205, false);
+  const mate2 = player(rcv2.m, 0, 3);
+  rcv2.m.ball.receiver = mate2;
+  mate2.pos = { x: 0, z: (BALL.pickupRadius + 0.35) * 1.4 };
+  for (const p of rcv2.m.players) { p.vel = { x: 0, z: 0 }; if (p !== mate2) p.stun = 0.5; }
+  step(rcv2.m, idle, dt);
+  assert.notEqual(rcv2.m.ball.owner, mate2, 'normal reach without the prayer');
+
+  // Determinism: two identical AI matches with Phanourios active from kick-off end bit-identical.
+  const run = () => {
+    const mm = createMatch(1301, { level: 'normal' });
+    for (const t of [0, 1]) { mm.prayers[t].ready = true; choosePrayer(mm, t, 'phanourios'); }
+    for (let i = 0; i < 60 * 20; i++) step(mm, null, dt);
+    return JSON.stringify({ s: mm.score, b: mm.ball.pos, p: mm.players.map((q) => [q.pos.x, q.pos.z]) });
+  };
+  assert.equal(run(), run(), 'Phanourios play is deterministic');
+
+  // Find events are throttled to one per 4 s per team.
+  const thr = setup(1206, true);
+  let finds = 0;
+  for (let k = 0; k < 3; k++) {
+    thr.m.ball.owner = null; thr.m.ball.pos = { x: -4.5, y: BALL.radius, z: 0 }; thr.m.ball.vel = { x: 0, y: 0, z: 0 };
+    for (let i = 0; i < 70 && !thr.m.ball.owner; i++) {
+      hold(thr.m, thr.fw); step(thr.m, idle, dt);
+      finds += thr.m.events.filter((e) => e.type === 'phanourios_find').length;
+    }
+    assert.equal(thr.m.ball.owner, thr.fw, `find #${k + 1} reached the striker`);
+  }
+  assert.equal(finds, 1, `finds within 4 s are throttled (${finds}, t=${thr.m.t.toFixed(2)})`);
+  assert.ok(thr.m.t < 4, 'all three finds happened inside the 4 s window');
+
+  // AI asks St Phanourios across a batch of matches.
+  let phanCount = 0;
+  for (let seed = 1; seed <= 16 && phanCount === 0; seed++) {
+    const mm = createMatch(1400 + seed, { level: 'hard' });
+    while (mm.phase !== 'over') {
+      step(mm, null, dt);
+      for (const e of mm.events) if (e.type === 'prayer' && e.kind === 'phanourios') phanCount++;
+    }
+  }
+  assert.ok(phanCount > 0, 'AI uses St Phanourios');
 }
 
 console.log('All prayer simulation unit tests passed.');

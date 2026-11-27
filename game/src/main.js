@@ -24,7 +24,7 @@ export function startGame({ size = 5, field = 'courtyard', devices = [defaultCon
   const netDebug = params.getAll('net').some(v => v.split(',').includes('debug'));
   // ?cameo=always shows the goal/catch cameo on every trigger instead of 1 in 5 (for trying it out).
   if (params.get('cameo') === 'always') window.__papifaCameoForceProb = 1;
-  // ?prayer=george (or jesus / mary / ready) starts a match with a prayer ready or active at kick-off.
+  // ?prayer=george (or jesus / mary / phanourios / ready) starts a match with a prayer ready or active at kick-off.
   const prayerSwitch = params.get('prayer')?.toLowerCase() ?? null;
   const applyPrayerSwitch = (m) => {
     if (guest || !m?.prayersEnabled || !prayerSwitch) return;
@@ -32,7 +32,7 @@ export function startGame({ size = 5, field = 'courtyard', devices = [defaultCon
     if (!pr) return;
     if (prayerSwitch === 'ready') {
       pr.ready = true; pr.charge = 1;
-    } else if (prayerSwitch === 'george' || prayerSwitch === 'jesus' || prayerSwitch === 'mary') {
+    } else if (['jesus', 'mary', 'george', 'phanourios'].includes(prayerSwitch)) {
       pr.ready = true; pr.charge = 1;
       choosePrayer(m, 0, prayerSwitch);
       pr.remaining = 2; // keep full match allowance for repeat testing

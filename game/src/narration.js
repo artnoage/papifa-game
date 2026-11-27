@@ -14,6 +14,7 @@ export const PRIORITY = {
   goal: 5,
   mary_block: 4,
   save: 3,
+  phanourios_find: 3,
   near_miss: 2,
   long_shot: 2,
   slide_tackle: 2,
@@ -31,6 +32,7 @@ export const COOLDOWNS = {
   prayer: 0.5,
   mary_block: 3.0,
   save: 5.0,
+  phanourios_find: 6.0,
   near_miss: 6.0,
   long_shot: 7.0,
   slide_tackle: 8.0,
@@ -52,11 +54,19 @@ export const PRIEST_CLIP_MAP = {
   nikolai: 'priest_nikolai',
 };
 
-// Approved shipped MP3 catalog per language (all 68 EN + 68 EL clips).
+// Lines still being recorded. They are listed in their buckets below but
+// stay out of the catalog until their MP3s ship: delete an id from this set once its file is in assets/narration.
+const PENDING_CLIPS = new Set([]);
+const shipped = (ids) => ids.filter((id) => !PENDING_CLIPS.has(id));
+
+// Approved shipped MP3 catalog per language (all 79 EN + 79 EL clips).
 const SHARED_BUCKETS = {
   kickoff: ['kickoff_1', 'kickoff_2', 'kickoff_3'],
   prayer_jesus: ['prayer_with_jesus', 'prayer_jesus_1', 'prayer_jesus_2', 'prayer_jesus_3'],
   prayer_mary: ['prayer_with_mary', 'prayer_mary_1', 'prayer_mary_2', 'prayer_mary_3'],
+  prayer_george: shipped(['prayer_with_george', 'prayer_george_1', 'prayer_george_2', 'prayer_george_3']),
+  prayer_phanourios: shipped(['prayer_with_phanourios', 'prayer_phanourios_1', 'prayer_phanourios_2', 'prayer_phanourios_3']),
+  phanourios_find: shipped(['phanourios_find_1', 'phanourios_find_2', 'phanourios_find_3']),
   goal_gold: ['goal_gold_1', 'goal_gold_2', 'goal_gold_3'],
   goal_blue: ['goal_blue_1', 'goal_blue_2', 'goal_blue_3'],
   goal_generic: ['goal_generic_1', 'goal_generic_2', 'goal_generic_3', 'goal_generic_4'],
@@ -82,9 +92,9 @@ export const NARRATION_CLIPS = {
 };
 
 const PREFETCH_BUCKET_ORDER = [
-  'prayer_jesus', 'prayer_mary', 'kickoff', 'clash',
+  'prayer_jesus', 'prayer_mary', 'prayer_george', 'prayer_phanourios', 'kickoff', 'clash',
   'goal_gold', 'goal_blue', 'goal_generic', 'goal_jesus',
-  'mary_block', 'save', 'near_miss', 'long_shot', 'slide_tackle', 'steal',
+  'mary_block', 'phanourios_find', 'save', 'near_miss', 'long_shot', 'slide_tackle', 'steal',
   'last_30s', 'fulltime_win', 'fulltime_draw', 'fulltime_loss', 'fulltime_neutral',
 ];
 
@@ -344,9 +354,10 @@ export function createNarrationEngine({
           enqueue('goal', useKit ? kitBucket : 'goal_generic', callOut);
         }
       } else if (e.type === 'prayer') {
-        if (e.kind === 'jesus' || e.kind === 'mary') {
-          enqueue('prayer', e.kind === 'mary' ? 'prayer_mary' : 'prayer_jesus');
-        }
+        // Each blessing has its own lines (a bucket with no shipped clips yet simply stays silent).
+        if (['jesus', 'mary', 'george', 'phanourios'].includes(e.kind)) enqueue('prayer', 'prayer_' + e.kind);
+      } else if (e.type === 'phanourios_find') {
+        enqueue('phanourios_find', 'phanourios_find');
       } else if (e.type === 'maryBlock') {
         pendingShot = null;
         enqueue('mary_block', 'mary_block');

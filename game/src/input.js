@@ -60,6 +60,7 @@ export function createInput(device = { type: 'keyboard' }, { touch, pitchTarget,
     input.prayerJesus = false;
     input.prayerMary = false;
     input.prayerGeorge = false;
+    input.prayerPhanourios = false;
   }
   clearActions();
 
@@ -69,6 +70,7 @@ export function createInput(device = { type: 'keyboard' }, { touch, pitchTarget,
     if (e.code === 'Digit1' || e.code === 'Numpad1') input.prayerJesus = true;
     if (e.code === 'Digit2' || e.code === 'Numpad2') input.prayerMary = true;
     if (e.code === 'Digit3' || e.code === 'Numpad3') input.prayerGeorge = true;
+    if (e.code === 'Digit4' || e.code === 'Numpad4') input.prayerPhanourios = true;
     if (sprintKeys.includes(e.code) && !held(sprintKeys)) keyboardGestures.sprintTap();
     if (e.code === 'Space') {
       input.passPressed = true;
@@ -169,7 +171,7 @@ export function createInput(device = { type: 'keyboard' }, { touch, pitchTarget,
     let autoRun = false;
     // Standard Xbox-style controller layout:
     // Left stick move (aims while LT autopilot runs), Right stick prayer wheel (hold left Jesus / right Mary /
-    // up St George), LT hold autopilot run (up to 2 s), RT sprint / double-tap knock-on, A pass/standing tackle,
+    // up St George / down St Phanourios), LT hold autopilot run (up to 2 s), RT sprint / double-tap knock-on, A pass/standing tackle,
     // Y through ball, LB+A one-two, B shoot (far tap knock-on, keeper punt), LB+B chip,
     // X slide tackle (defending; RT+A also slides), tap LB switch priest, hold RB teammate press, Start pause.
     const pad = ownedPad();
@@ -181,7 +183,8 @@ export function createInput(device = { type: 'keyboard' }, { touch, pitchTarget,
       if (rLen > PRAYER_STICK_MIN) {
         const near = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) <= PRAYER_STICK_CONE;
         const ang = Math.atan2(rz, rx);
-        const slot = near(ang, Math.PI) ? 'prayerJesus' : near(ang, 0) ? 'prayerMary' : near(ang, -Math.PI / 2) ? 'prayerGeorge' : null;
+        const slot = near(ang, Math.PI) ? 'prayerJesus' : near(ang, 0) ? 'prayerMary' : near(ang, -Math.PI / 2) ? 'prayerGeorge'
+          : near(ang, Math.PI / 2) ? 'prayerPhanourios' : null;
         if (slot) { prayerHeld = true; input[slot] = true; }
       }
 

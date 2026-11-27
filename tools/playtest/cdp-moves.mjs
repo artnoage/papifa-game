@@ -41,7 +41,7 @@ export async function checkAdvancedTouch({ send, evaluate, advance, fingers, poi
   assert.deepEqual(await evaluate(`[...document.querySelectorAll('#move-help[open] .finger-move')]
     .filter(el => el.getClientRects().length).map(el => el.textContent)`), [
     'Swipe up on Pass', 'Hold Shoot, swipe up and release', 'Swipe right on Pass',
-    'Tap Shoot far from goal to knock it ahead, or double-tap the stick centre', 'Hold Switch', 'Hold Pray (2 s), then tap Jesus, George, or Mary',
+    'Tap Shoot far from goal to knock it ahead, or double-tap the stick centre', 'Hold Switch', 'Hold Pray (2 s), then tap Jesus, George, Mary or Phanourios',
   ]);
   await shot('touch-moves');
   await fingers('touchStart', point(guide, 1));

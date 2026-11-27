@@ -14,25 +14,35 @@ export const STAMINA = { drain: 1 / 9, regenRun: 1 / 7, regenIdle: 1 / 3.5, tire
 // visualRadius is the drawn ball; radius is the sim's (balance is tuned on it).
 export const BALL = { radius: 0.3, visualRadius: 0.22, rollFriction: 1.0, airDrag: 0.15, gravity: 20, bounce: 0.5, wallBounce: 0.65, pickupRadius: 0.95 };
 export const MATCH = { seconds: 180, celebrate: 2.2 };
-// Prayers (v4 + Task H): 2 per team per match (any mix of Jesus, Mary, and St George), 2.0 s charge, 0.5 s drain, 15 s active.
+// Prayers (v4 + Task H + Task O): 2 slots per team per match (any mix of Jesus, Mary, St George and St Phanourios),
+// 2.0 s charge, 0.5 s drain; each blessing lasts its own time (durations below).
 export const PRAYER = {
   maxPerMatch: 2,
   // Prayer slots each blessing uses up: Jesus is strong enough to take both.
-  cost: { jesus: 2, mary: 1, george: 1 },
+  cost: { jesus: 2, mary: 1, george: 1, phanourios: 1 },
   chargeTime: 2.0,
   drainTime: 0.5,
-  duration: 15,
+  // Seconds each blessing stays active.
+  durations: { jesus: 10, mary: 12, george: 15, phanourios: 15 },
   clashHold: 0.6,
   maryRebound: 0.4,
   jesusSpeed: 34,
   georgeSpeedBoost: 1.30,
+  // St Phanourios finds lost balls: a loose low ball within pullRadius of the team's outfield priests
+  // curves toward the nearest one (pullAccel m/s², above the 6 m/s² rolling friction so a still ball
+  // starts to roll; never faster than pullMaxSpeed), and the team's receivers pick passes up from
+  // pickupBoost× further away. One "found" narration per findCooldown s.
+  phanourios: { pullRadius: 12, pullAccel: 10, pullMaxSpeed: 14, pullMaxY: 1.2, pickupBoost: 1.5, findCooldown: 4 },
   ai: {
-    veryEasy: { maxUses: 1, startDelay: 48, cooldown: 100, checkInterval: 3.0, jesusRate: 0.12, georgeRate: 0.12, maryRate: 0.004, poorTiming: true },
-    easy:     { startDelay: 32, cooldown: 70,  checkInterval: 2.2, jesusRate: 0.09, georgeRate: 0.09, maryRate: 0.11,  jesusX: 0.08, maryThreat: 25 },
-    normal:   { startDelay: 22, cooldown: 58,  checkInterval: 1.8, jesusRate: 0.16, georgeRate: 0.16, maryRate: 0.18,  jesusX: 0.20, maryThreat: 22 },
-    hard:     { startDelay: 10, cooldown: 32,  checkInterval: 0.6, jesusRate: 0.85, georgeRate: 0.85, maryRate: 0.85,  jesusX: 0.33, maryThreat: 18 },
+    veryEasy: { maxUses: 1, startDelay: 48, cooldown: 100, checkInterval: 3.0, jesusRate: 0.12, georgeRate: 0.12, phanouriosRate: 0.10, maryRate: 0.004, poorTiming: true },
+    easy:     { startDelay: 32, cooldown: 70,  checkInterval: 2.2, jesusRate: 0.09, georgeRate: 0.09, phanouriosRate: 0.08, maryRate: 0.11,  jesusX: 0.08, maryThreat: 25 },
+    normal:   { startDelay: 22, cooldown: 58,  checkInterval: 1.8, jesusRate: 0.16, georgeRate: 0.16, phanouriosRate: 0.14, maryRate: 0.18,  jesusX: 0.20, maryThreat: 22 },
+    hard:     { startDelay: 10, cooldown: 32,  checkInterval: 0.6, jesusRate: 0.85, georgeRate: 0.85, phanouriosRate: 0.6, maryRate: 0.85,  jesusX: 0.33, maryThreat: 18 },
   },
 };
+export const PRAYER_KINDS = ['jesus', 'mary', 'george', 'phanourios'];
+// How long a blessing lasts, in seconds.
+export const prayerDuration = kind => PRAYER.durations[kind] ?? 15;
 // AI difficulty. createMatch(seed, { level: 'veryEasy' | 'easy' | 'normal' | 'hard' | 'veryHard', ai: [{...}, {...}] })
 // picks a level for both teams; `ai` overrides single knobs per team (e.g. a weaker CPU side against a human).
 export const AI_LEVELS = {

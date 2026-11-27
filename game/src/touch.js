@@ -12,6 +12,7 @@ export function createTouchControls(root) {
   const prayJesus = root.querySelector('[data-prayer-choice="jesus"]');
   const prayMary = root.querySelector('[data-prayer-choice="mary"]');
   const prayGeorge = root.querySelector('[data-prayer-choice="george"]');
+  const prayPhanourios = root.querySelector('[data-prayer-choice="phanourios"]');
   const owners = new Map();  // One finger per control. Either thumb can lift first.
   const pending = new Set();
   const gestures = createButtonGestures((edge) => pending.add(edge));
@@ -63,6 +64,8 @@ export function createTouchControls(root) {
       pending.add('prayerMary');
     } else if (up && control === prayGeorge) {
       pending.add('prayerGeorge');
+    } else if (up && control === prayPhanourios) {
+      pending.add('prayerPhanourios');
     } else if (up && control === stick && start.centreTap && performance.now() - start.at <= 220) {
       gestures.sprintTap();
     }
@@ -90,6 +93,7 @@ export function createTouchControls(root) {
       if (control === prayJesus) { pending.add('prayerJesus'); return; }
       if (control === prayMary) { pending.add('prayerMary'); return; }
       if (control === prayGeorge) { pending.add('prayerGeorge'); return; }
+      if (control === prayPhanourios) { pending.add('prayerPhanourios'); return; }
       if (control === pray) return;
       pending.add(action + 'Pressed');
       if (control === shoot) pending.add('shootReleased');

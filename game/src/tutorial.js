@@ -8,7 +8,7 @@ const DONE_BEAT = 1.3;     // s the tick stays up before the next step
 const STUCK_RESET = 3.0;   // s without the ball (on steps that need it) before the drill resets
 
 const ACTION_FLAGS = ['passPressed', 'shootPressed', 'shootReleased', 'switchPressed', 'switchToAim', 'throughPressed',
-  'oneTwoPressed', 'chipReleased', 'knockOnPressed', 'pressPressed', 'pausePressed', 'prayerJesus', 'prayerMary', 'prayerGeorge'];
+  'oneTwoPressed', 'chipReleased', 'knockOnPressed', 'pressPressed', 'pausePressed', 'prayerJesus', 'prayerMary', 'prayerGeorge', 'prayerPhanourios'];
 
 export function blankInput() {
   const input = { move: { x: 0, z: 0 }, aim: null, sprint: false, shootHeld: false, prayerHeld: false, autoRun: false };
@@ -167,7 +167,7 @@ export const TUTORIAL_STEPS = [
   },
   {
     id: 'pray', title: 'Pray', keys: ['RS'],
-    caption: 'Push and hold the right stick: ◀ Jesus (unstoppable next shot), ▲ St George (your priest rides a horse, 30% faster) or ▶ Mother Mary (shields your goal). The cross fills in 2 s.',
+    caption: 'Push and hold the right stick: ◀ Jesus (unstoppable next shot, uses both prayers), ▲ St George (your priest rides a horse, 30% faster), ▶ Mother Mary (shields your goal) or ▼ St Phanourios (loose balls find your team). The cross fills in 2 s.',
     setup: m => place(m, { mePos: { x: -6, z: 4 } }),
     demo: { length: 2.9, segs: [{ from: 0.2, to: 2.6, prayerHeld: true, prayerJesus: true, pad: { rs: [-1, 0] } }] },
     success: m => !!m.prayers[0].active,
@@ -187,7 +187,7 @@ export function demoInput(step, t, fired) {
   for (const s of step.demo.segs) {
     if (t < s.from || t >= s.to) continue;
     if (s.move) { inp.move.x = s.move[0]; inp.move.z = s.move[1]; }
-    for (const k of ['sprint', 'shootHeld', 'autoRun', 'prayerHeld', 'prayerJesus', 'prayerMary', 'prayerGeorge']) if (s[k]) inp[k] = true;
+    for (const k of ['sprint', 'shootHeld', 'autoRun', 'prayerHeld', 'prayerJesus', 'prayerMary', 'prayerGeorge', 'prayerPhanourios']) if (s[k]) inp[k] = true;
   }
   for (const [i, e] of (step.demo.edges ?? []).entries()) {
     if (!fired.has(i) && t >= e.at) { fired.add(i); inp[e.edge] = true; }

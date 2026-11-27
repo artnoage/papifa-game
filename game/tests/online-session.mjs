@@ -77,7 +77,7 @@ assert.deepEqual(seenEvents.find(e => e.type === 'maryBlock'), { type: 'maryBloc
 assert.equal(sim.prayers[1].active, 'mary', 'guest charging + Mary pick activates Mary on host');
 assert.equal(screen.prayers[1].active, 'mary', 'active Mary prayer syncs into guest snapshots');
 assert.equal(screen.prayers[1].remaining, 1, 'remaining prayer count decrements on guest');
-assert.ok(screen.prayers[1].timeLeft > 10 && screen.prayers[1].timeLeft <= 15);
+assert.ok(screen.prayers[1].timeLeft > 10 && screen.prayers[1].timeLeft <= 12, 'Mary lasts 12 s');
 assert.ok(interpolated && sim.t - screen.t < .25 && screen.t < sim.t);
 const count = type => traffic.filter(x => x.packet.type === type).length;
 assert.ok(count('input') >= 142 && count('input') <= 150);
@@ -87,10 +87,23 @@ assert.deepEqual(screen.humans.map(x => x.team), [0, 1]);
 const snap = packState(sim, 'live');
 assert.ok(validState(snap)); assert.ok(!validState({ ...snap, ball: [] }));
 assert.ok(!validState({ ...snap, prayers: [[3, 0, 0, 0, 0, -1], [2, 0, 0, 0, 0, -1]] }), 'prayers remaining > 2 rejected');
-assert.ok(!validState({ ...snap, prayers: [[2, 0, 0, 4, 0, -1], [2, 0, 0, 0, 0, -1]] }), 'invalid active prayer index rejected');
+assert.ok(!validState({ ...snap, prayers: [[2, 0, 0, 5, 0, -1], [2, 0, 0, 0, 0, -1]] }), 'invalid active prayer index rejected');
+assert.ok(validState({ ...snap, prayers: [[1, 0, 0, 4, 14000, -1], [2, 0, 0, 0, 0, -1]] }), 'St Phanourios prayer accepted');
 assert.ok(!validState({ ...snap, prayers: [[1, 0, 0, 3, 12000, 99], [2, 0, 0, 0, 0, -1]] }), 'invalid riderSlot rejected');
 assert.ok(validState({ ...snap, prayers: [[1, 0, 0, 3, 12000, 4], [2, 0, 0, 0, 0, -1]] }), 'valid St George prayer + riderSlot accepted');
-assert.ok(!validState({ ...snap, ball: [...snap.ball.slice(0, 7), 4] }), 'invalid ball flag bitmask rejected');
+assert.ok(!validState({ ...snap, ball: [...snap.ball.slice(0, 7), 16] }), 'invalid ball flag bitmask rejected');
+assert.ok(!validState({ ...snap, ball: [...snap.ball.slice(0, 7), 12] }), 'a ball found by both teams is rejected');
+// St Phanourios: the active kind and the "found by" ball flag reach the guest.
+const phanSnap = structuredClone(snap);
+phanSnap.prayers[1] = [1, 0, 0, 4, 14000, -1];
+phanSnap.ball[6] = -1; phanSnap.ball[7] = 8;
+assert.ok(validState(phanSnap));
+applyState(screen, phanSnap, phanSnap, 0.5);
+assert.equal(screen.prayers[1].active, 'phanourios');
+assert.equal(screen.ball.foundBy, 1);
+phanSnap.ball[7] = 0;
+applyState(screen, phanSnap, phanSnap, 0.5);
+assert.equal(screen.ball.foundBy, null);
 // Verify St George prayer + riderSlot syncs cleanly into guest snapshots.
 const georgeSnap = structuredClone(snap);
 georgeSnap.prayers[0] = [1, 0, 0, 3, 14100, 4];

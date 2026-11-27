@@ -48,7 +48,8 @@ function playMatch(seed, firstTeam, controller, opts = {}) {
 
 const record = (scores) => ['W', 'D', 'L'].map((_, i) => scores.filter(([a, b]) => Math.sign(b - a) === i - 1).length);
 
-for (const [size, band, casualMinW48] of [[5, [3.5, 5.3], 42], [3, [5.6, 7.4], 34]]) {
+// Task O: Jesus now lasts 10 s and St Phanourios competes for the slots, so 5v5 scores a little less.
+for (const [size, band, casualMinW48] of [[5, [3.3, 5.3], 42], [3, [5.6, 7.4], 34]]) {
   const equalRuns = [];
   const easyRuns = [];
   for (let seed = 1; seed <= 24; seed++) {

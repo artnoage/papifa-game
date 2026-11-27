@@ -1,5 +1,5 @@
 // Dramatic prayer apparition (v4.1 Task B):
-// When a team chooses Jesus or Mother Mary, an Orthodox icon descends smoothly from the top edge
+// When a team chooses a blessing (Jesus, Mother Mary, St George or St Phanourios), an Orthodox icon descends smoothly from the top edge
 // on the praying side with soft golden rays, holds ~1.5 s in the top third, and fades up and out
 // (~3 s total), paired with a ~2 s "Jesus is with you!" / "Mother Mary is with you!" banner.
 // Driven by match time `displayT` so live play, slow-motion goal replays, and online guests stay synchronized.
@@ -14,6 +14,7 @@ const ICON_SRC = {
   jesus: 'assets/ui/icon_christ.webp',
   mary: 'assets/ui/icon_mary.webp',
   george: 'assets/ui/icon_george.webp',
+  phanourios: 'assets/ui/icon_phanourios.webp',
 };
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -29,6 +30,9 @@ export function prayerBannerText(kind, langPref = 'en') {
   }
   if (kind === 'george') {
     return lang === 'el' ? 'Ο Άγιος Γεώργιος είναι μαζί σου!' : 'St George is with you!';
+  }
+  if (kind === 'phanourios') {
+    return lang === 'el' ? 'Ο Άγιος Φανούριος είναι μαζί σου!' : 'St Phanourios is with you!';
   }
   return lang === 'el' ? 'Ο Χριστός είναι μαζί σου!' : 'Jesus is with you!';
 }
@@ -105,7 +109,7 @@ export function createPrayerApparition(root) {
     const cutoff = match.t - HISTORY_S;
     for (const e of events) {
       if (e.type !== 'prayer' || (e.team !== 0 && e.team !== 1)) continue;
-      if (e.kind !== 'jesus' && e.kind !== 'mary' && e.kind !== 'george') continue;
+      if (!(e.kind in ICON_SRC)) continue;
       // Avoid duplicate entry on identical timestamp/team/kind.
       const dup = history.some((h) => h.team === e.team && h.kind === e.kind && Math.abs(h.t - match.t) < 0.12);
       if (!dup) history.push({ t: match.t, team: e.team, kind: e.kind });

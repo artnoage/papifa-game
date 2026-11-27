@@ -1,6 +1,6 @@
 // Match simulation: pure logic, no rendering. Vectors are plain {x, z} (ground) plus ball.y for height.
 // Team 0 attacks +x, team 1 attacks -x. Slot 0 of each team is the goalkeeper.
-import { PITCH, PLAYER, BALL, MATCH, PRAYER, ROSTER, FORMATIONS, SQUADS, pitchFor, REFEREE, AI_LEVELS, resolveLevel, STAMINA } from './config.js';
+import { PITCH, PLAYER, BALL, MATCH, PRAYER, PRAYER_KINDS, prayerDuration, ROSTER, FORMATIONS, SQUADS, pitchFor, REFEREE, AI_LEVELS, resolveLevel, STAMINA } from './config.js';
 import { teamStats, recordEvent } from './stats.js';
 
 // Half length and width of the current match's pitch. createMatch, kickoff and step set them from m.pitch
@@ -41,12 +41,14 @@ function createPrayerState() {
     active: null,
     timeLeft: 0,
     riderSlot: -1,
+    findT: -99,
     ai: { cd: 0, checkT: 0, intent: null, readyT: 0 },
   };
 }
 
 const isJesusActive = (m, team) => !!(m.prayersEnabled && m.prayers?.[team]?.active === 'jesus');
 const isMaryActive = (m, team) => !!(m.prayersEnabled && m.prayers?.[team]?.active === 'mary');
+const isPhanouriosActive = (m, team) => !!(m.prayersEnabled && m.prayers?.[team]?.active === 'phanourios');
 export const isGeorgeRider = (m, p) => !!(
   p && m.prayersEnabled
   && m.prayers?.[p.team]?.active === 'george'
@@ -78,9 +80,39 @@ function dismountGeorge(m, p) {
   return true;
 }
 
+// A tackle that beats St George's rider only knocks the horse away: the rider is thrown about 2 m on,
+// along his run (or facing), and keeps the ball at his feet. No turnover, no stun. Deterministic.
+const GEORGE_THROW = 2.0;
+function throwGeorgeRider(m, c) {
+  if (!dismountGeorge(m, c)) return false;
+  const sp = hyp(c.vel.x, c.vel.z);
+  const dir = sp > 0.5 ? { x: c.vel.x / sp, z: c.vel.z / sp } : facingDir(c);
+  // Land at the farthest clear spot up to 2 m on (he may fly past the tackler, but never lands on a priest),
+  // inside the walls and short of the goal line.
+  const margin = PLAYER.radius + 0.3;
+  // Straight on first; if that is all priests (a head-on tackler), veer 45° then 90° either side.
+  let x = c.pos.x, z = c.pos.z, out = dir;
+  throwing: for (const turn of [0, Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2]) {
+    const cs = Math.cos(turn), sn = Math.sin(turn), u = { x: dir.x * cs - dir.z * sn, z: dir.x * sn + dir.z * cs };
+    for (let d = GEORGE_THROW; d > 0.2; d -= 0.25) {
+      const nx = clamp(c.pos.x + u.x * d, -HL + margin, HL - margin), nz = clamp(c.pos.z + u.z * d, -HW + margin, HW - margin);
+      if (!m.players.some((q) => q !== c && hyp(q.pos.x - nx, q.pos.z - nz) < PLAYER.radius * 2)) { x = nx; z = nz; out = u; break throwing; }
+    }
+  }
+  c.pos.x = x; c.pos.z = z;
+  c.facing = Math.atan2(out.z, out.x);
+  const b = m.ball;
+  b.owner = c; b.receiver = null; b.passer = null; b.shot = null; b.lastTouch = c;
+  b.pos = { x: x + out.x * PLAYER.dribbleOffset, y: BALL.radius, z: z + out.z * PLAYER.dribbleOffset };
+  b.vel = { x: c.vel.x, y: 0, z: c.vel.z };
+  m.lastTeam = c.team;
+  recordEvent(m, { type: 'georgeThrown', team: c.team });
+  return true;
+}
+
 export function choosePrayer(m, team, kind) {
   if (!m.prayersEnabled || m.phase !== 'play') return false;
-  if (kind !== 'jesus' && kind !== 'mary' && kind !== 'george') return false;
+  if (!PRAYER_KINDS.includes(kind)) return false;
   const pr = m.prayers?.[team];
   const cost = PRAYER.cost?.[kind] ?? 1;
   if (!pr || !pr.ready || pr.remaining < cost || pr.active !== null) return false;
@@ -94,7 +126,7 @@ export function choosePrayer(m, team, kind) {
   pr.ready = false;
   pr.charging = false;
   pr.active = kind;
-  pr.timeLeft = PRAYER.duration;
+  pr.timeLeft = prayerDuration(kind);
   pr.riderSlot = riderSlot;
   pr.ai.intent = null;
   pr.ai.readyT = 0;
@@ -120,7 +152,7 @@ export function createMatch(seed = Date.now(), opts = {}) {
     seed: seed | 0,
     players,
     referee: { info: REFEREE, team: null, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, speed: 0, facing: 0, anim: 'idle', attack: 1 },
-    ball: { pos: { x: 0, y: BALL.radius, z: 0 }, vel: { x: 0, y: 0, z: 0 }, owner: null, receiver: null, shot: null, lastTouch: null, noPickup: new Map() },
+    ball: { pos: { x: 0, y: BALL.radius, z: 0 }, vel: { x: 0, y: 0, z: 0 }, owner: null, receiver: null, shot: null, lastTouch: null, noPickup: new Map(), foundBy: null },
     score: [0, 0], stats: [teamStats(), teamStats()], clock: MATCH.seconds, t: 0,
     phase: 'play', phaseT: 0, events: [], rand: mulberry32(seed),
     // One controlled priest per human side (null for an AI side). m.human, m.charge and m.charging stay
@@ -548,7 +580,7 @@ export function slideTackle(m, p, dir) {
   const v = Math.max(SLIDE.speed, hyp(p.vel.x, p.vel.z) + 2);
   p.vel = { x: p.slideDir.x * v, z: p.slideDir.z * v };
   p.facing = Math.atan2(p.slideDir.z, p.slideDir.x);
-  p.slideT = 0; p.slideHit = false; p.slideDone = false;
+  p.slideT = 0; p.slideHit = false; p.slideMissed = false; p.slideDone = false;
   p.tackleCd = 1.8; p.anim = 'slide'; p.actionT = SLIDE.clip; p.stamina = Math.max(0, p.stamina - STAMINA.slide);
   m.events.push({ type: 'tackle', kind: 'slide', team: p.team, human: isHuman(m, p) });
   return true;
@@ -585,13 +617,16 @@ function slideStep(m, p, dt) {
       const tMul = ah === p ? 1 : (knobsFor(m, p.team, ah).tackle ?? 1);
       const baseChance = clamp(0.8 * p.info.tackle - (behind ? 0.3 : 0), 0.15, 0.92);
       const chance = tMul === 1 ? baseChance : clamp(baseChance * tMul, 0.1, 0.92);
-      if (m.rand() < chance) {
+      const won = m.rand() < chance;
+      if (won && isGeorgeRider(m, c)) {
+        throwGeorgeRider(m, c);                        // the horse takes the hit; the slide counts as a miss
+        p.slideMissed = true;
+      } else if (won) {
         const side = (m.rand() - 0.5) * 4;
         b.owner = null;
         b.vel = { x: p.slideDir.x * 6 - p.slideDir.z * side, y: 0.6, z: p.slideDir.z * 6 + p.slideDir.x * side };
         b.receiver = null; b.noPickup.set(c, m.t + 0.7); b.noPickup.set(p, m.t + 0.5);
         c.stun = 0.9; c.anim = 'stunned'; c.actionT = 0.9;      // taken off his feet
-        dismountGeorge(m, c);
         m.lastTeam = p.team;
         b.lastTouch = p;
         recordEvent(m, { type: 'steal', team: p.team, kind: 'slide' });
@@ -605,7 +640,7 @@ function slideStep(m, p, dt) {
   }
   if (sp <= 0.05 && !p.slideDone) {                     // stopped: get up (longer after a miss)
     p.slideDone = true; p.vel = { x: 0, z: 0 };
-    p.stun = p.slideHit ? SLIDE.upHit : SLIDE.upMiss;
+    p.stun = p.slideHit && !p.slideMissed ? SLIDE.upHit : SLIDE.upMiss;
   }
 }
 
@@ -620,13 +655,16 @@ export function tackle(m, p) {
   const tMul = ah === p ? 1 : (knobsFor(m, p.team, ah).tackle ?? 1);
   const baseChance = clamp(0.55 * p.info.tackle - (c.isGK ? 0.3 : 0), 0.1, 0.9);
   const chance = tMul === 1 ? baseChance : clamp(baseChance * tMul, 0.08, 0.9);
-  if (m.rand() < chance) {
+  const won = m.rand() < chance;
+  if (won && isGeorgeRider(m, c)) {
+    throwGeorgeRider(m, c);                            // the horse takes the hit; the tackler recovers as from a miss
+    p.stun = 0.35;
+  } else if (won) {
     const f = facingDir(p);
     m.ball.owner = null;
     m.ball.vel = { x: f.x * 4.5, y: 0, z: f.z * 4.5 };
     m.ball.noPickup.set(c, m.t + 0.6);
     c.stun = 0.7; c.anim = 'stunned'; c.actionT = 0.7;
-    dismountGeorge(m, c);
     m.lastTeam = p.team;
     m.ball.lastTouch = p;
     recordEvent(m, { type: 'steal', team: p.team });
@@ -1233,6 +1271,8 @@ function aiPrayerInput(m, t, dt) {
   const oppNearGoal = oppHasBall && b.owner.pos.x * dir < 0 && hyp(b.owner.pos.x - ownGx, b.owner.pos.z) < (prof.maryThreat ?? 20);
   const goalThreat = oppNearGoal || (oppJesus && ballX < HL * 0.25);
   const attackThird = weHaveBall && ballX > HL * (prof.jesusX ?? 0.25);
+  // A loose ball (nobody on it, no pass of ours on its way) in the middle or our half is St Phanourios' moment.
+  const looseBall = !b.owner && !b.shot && !(b.receiver?.team === t) && ballX < HL * 0.35;
 
   if (pr.ready) {
     pr.ai.readyT += dt;
@@ -1243,6 +1283,8 @@ function aiPrayerInput(m, t, dt) {
       if (pr.ai.intent === 'mary') {
         if (ballX > 12 && !oppJesus && !oppHasBall) choose = 'mary';
         else if (pr.ai.readyT > 8 && oppHasBall && ballX < -2) pr.ai.intent = 'jesus';
+      } else if (pr.ai.intent === 'phanourios') {
+        if (weHaveBall) choose = 'phanourios';             // too late: the ball is already found
       } else if (oppHasBall && ballX < -2) {
         choose = pr.ai.intent === 'george' ? 'george' : 'jesus';
       }
@@ -1250,11 +1292,13 @@ function aiPrayerInput(m, t, dt) {
       const hard = prof === PRAYER.ai.hard;
       if (goalThreat && (pr.ai.intent === 'mary' || hard)) choose = 'mary';
       else if (pr.ai.intent === 'george' && weHaveBall && ballX > -HL * 0.65) choose = 'george';
+      else if (pr.ai.intent === 'phanourios' && (looseBall || oppHasBall)) choose = 'phanourios';
       else if (attackThird && (pr.ai.intent === 'jesus' || hard)) choose = 'jesus';
       else if (m.clock < 16 && (weHaveBall || oppHasBall)) choose = weHaveBall ? (pr.ai.intent === 'george' ? 'george' : 'jesus') : 'mary';
       else if (!hard && pr.ai.readyT > 5) {
         if (pr.ai.intent === 'jesus' && weHaveBall) choose = 'jesus';
         else if (pr.ai.intent === 'george' && weHaveBall) choose = 'george';
+        else if (pr.ai.intent === 'phanourios') choose = 'phanourios';
         else if (pr.ai.intent === 'mary' && oppHasBall && ballX < 8) choose = 'mary';
       }
     }
@@ -1262,9 +1306,9 @@ function aiPrayerInput(m, t, dt) {
     if (choose === 'jesus' && pr.remaining < (PRAYER.cost?.jesus ?? 1)) choose = 'george';
     if (choose) {
       pr.ai.cd = prof.cooldown * (0.8 + m.rand() * 0.4);
-      return { prayerHeld: false, prayerJesus: choose === 'jesus', prayerMary: choose === 'mary', prayerGeorge: choose === 'george' };
+      return { prayerHeld: false, prayerJesus: choose === 'jesus', prayerMary: choose === 'mary', prayerGeorge: choose === 'george', prayerPhanourios: choose === 'phanourios' };
     }
-    return { prayerHeld: false, prayerJesus: false, prayerMary: false, prayerGeorge: false };
+    return { prayerHeld: false, prayerJesus: false, prayerMary: false, prayerGeorge: false, prayerPhanourios: false };
   }
 
   if (pr.ai.intent) {
@@ -1273,7 +1317,7 @@ function aiPrayerInput(m, t, dt) {
       pr.ai.intent = null;
       return null;
     }
-    return { prayerHeld: true, prayerJesus: false, prayerMary: false, prayerGeorge: false };
+    return { prayerHeld: true, prayerJesus: false, prayerMary: false, prayerGeorge: false, prayerPhanourios: false };
   }
 
   if (pr.ai.cd > 0) return null;
@@ -1286,7 +1330,7 @@ function aiPrayerInput(m, t, dt) {
     if (ballX > 12 && !oppJesus && !oppHasBall && m.rand() < prof.maryRate) pr.ai.intent = 'mary';
     else if (oppHasBall && ballX < -2 && m.rand() < prof.jesusRate) {
       pr.ai.intent = m.rand() < georgeRate / (prof.jesusRate + georgeRate) ? 'george' : 'jesus';
-    }
+    } else if (weHaveBall && m.rand() < (prof.phanouriosRate ?? 0)) pr.ai.intent = 'phanourios';
   } else {
     const oppApproaching = (oppHasBall && ballX < 6 && hyp(b.owner.pos.x - ownGx, b.owner.pos.z) < prof.maryThreat + 8) || oppJesus;
     const hardPrepMary = prof === PRAYER.ai.hard && (m.prayers[1 - t].charging || m.prayers[1 - t].ready) && ballX < 10;
@@ -1297,9 +1341,12 @@ function aiPrayerInput(m, t, dt) {
     } else if (weHaveBall && ballX > -HL * 0.65 && ballX <= HL * (prof.jesusX - 0.15) && m.rand() < georgeRate * 0.85) {
       // Midfield / counter-attack buildup: mount St George to gallop into the attacking third!
       pr.ai.intent = 'george';
+    } else if (looseBall && m.rand() < (prof.phanouriosRate ?? 0)) {
+      // A loose ball in midfield or our half: ask St Phanourios to find it.
+      pr.ai.intent = 'phanourios';
     }
   }
-  return pr.ai.intent ? { prayerHeld: true, prayerJesus: false, prayerMary: false, prayerGeorge: false } : null;
+  return pr.ai.intent ? { prayerHeld: true, prayerJesus: false, prayerMary: false, prayerGeorge: false, prayerPhanourios: false } : null;
 }
 
 function stepPrayers(m, inputs, hs, dt) {
@@ -1322,6 +1369,7 @@ function stepPrayers(m, inputs, hs, dt) {
       if (src?.prayerJesus) choosePrayer(m, t, 'jesus');
       else if (src?.prayerMary) choosePrayer(m, t, 'mary');
       else if (src?.prayerGeorge) choosePrayer(m, t, 'george');
+      else if (src?.prayerPhanourios) choosePrayer(m, t, 'phanourios');
     } else if (held && pr.remaining > 0 && pr.active === null) {
       pr.charging = true;
       pr.charge = Math.min(1, pr.charge + dt / PRAYER.chargeTime);
@@ -1508,9 +1556,11 @@ function stepBall(m, dt) {
       if (isMaryActive(m, sx > 0 ? 1 : 0)) b.pos.x = sx * (HL - r - 0.05);
     }
     b.vel = { x: p.vel.x, y: 0, z: p.vel.z };
+    b.foundBy = null;
     return;
   }
   const v = b.vel;
+  b.foundBy = null;
   if (b.clashDrop) {                                          // hold ~0.6 s at clash point, then drop gently onto goal line
     v.x = 0; v.z = 0;
     if (b.clashHoldT > 0) {
@@ -1546,6 +1596,7 @@ function stepBall(m, dt) {
     }
     return;
   }
+  phanouriosPull(m, dt);
   if (b.pos.y > r + 0.01 || v.y > 0.01) {                     // airborne
     v.y -= BALL.gravity * dt;
     const drag = Math.exp(-BALL.airDrag * dt);
@@ -1589,6 +1640,35 @@ function stepBall(m, dt) {
     }
   }
   keeperSave(m);
+}
+
+// St Phanourios finds lost balls: while his blessing is on, a loose low ball near the team curves toward
+// its intended receiver (a pass of theirs) or the nearest of its outfield priests. Pure math, no randomness,
+// so host and guest stay in step.
+function phanouriosPull(m, dt) {
+  const b = m.ball, cfg = PRAYER.phanourios;
+  if (!m.prayersEnabled || m.phase !== 'play' || b.shot || b.clashDrop || b.inNet || b.pos.y > cfg.pullMaxY) return;
+  let target = null, td = Infinity, team = null;
+  for (const t of [0, 1]) {
+    if (!isPhanouriosActive(m, t)) continue;
+    let best = null, bd = Infinity;
+    if (b.receiver?.team === t && b.receiver.stun <= 0) {
+      best = b.receiver; bd = hyp(b.pos.x - best.pos.x, b.pos.z - best.pos.z);
+    } else {
+      for (const q of teamOf(m, t)) {
+        if (q.isGK || q.stun > 0) continue;
+        const d = hyp(b.pos.x - q.pos.x, b.pos.z - q.pos.z);
+        if (d < bd) { bd = d; best = q; }
+      }
+    }
+    if (best && bd < cfg.pullRadius && bd < td) { td = bd; target = best; team = t; }
+  }
+  if (!target || td < 0.05) return;
+  const v = b.vel, ux = (target.pos.x - b.pos.x) / td, uz = (target.pos.z - b.pos.z) / td;
+  v.x += ux * cfg.pullAccel * dt; v.z += uz * cfg.pullAccel * dt;
+  const sp = hyp(v.x, v.z);
+  if (sp > cfg.pullMaxSpeed) { v.x *= cfg.pullMaxSpeed / sp; v.z *= cfg.pullMaxSpeed / sp; }
+  b.foundBy = team;
 }
 
 function keeperSave(m) {
@@ -1641,12 +1721,21 @@ function pickups(m) {
     if (b.clashDrop && (!p.isGK || p.team !== b.clashDef)) continue;
     if (p.stun > 0 || (b.noPickup.get(p) ?? -1) > m.t) continue;
     if (b.pos.y > 1.3 && b.receiver !== p) continue;       // only the intended receiver goes up for a high ball
-    const reach = BALL.pickupRadius + (b.receiver === p ? 0.35 : 0);
+    let reach = BALL.pickupRadius + (b.receiver === p ? 0.35 : 0);
+    if (b.receiver === p && isPhanouriosActive(m, p.team)) reach *= PRAYER.phanourios.pickupBoost;
     const d = hyp(b.pos.x - p.pos.x, b.pos.z - p.pos.z);
     if (d < reach && d < bd) { bd = d; best = p; }
   }
   if (!best) return;
   if (b.passer?.team === best.team && b.passer !== best) recordEvent(m, { type: 'receive', team: best.team });
+  if (b.foundBy === best.team && m.prayers?.[best.team]) {     // St Phanourios found the ball for this team
+    const pr = m.prayers[best.team];
+    if (m.t - pr.findT >= PRAYER.phanourios.findCooldown) {
+      pr.findT = m.t;
+      recordEvent(m, { type: 'phanourios_find', team: best.team });
+    }
+  }
+  b.foundBy = null;
   if (best.isGK && b.shot && b.shot.team !== best.team) {      // gathering a loose shot is a catch too
     best.anim = 'catch'; best.actionT = 0.6; best.moveKind = 'catch';
     const spd = Math.round(hyp(b.vel.x, b.vel.z) * 10) / 10;

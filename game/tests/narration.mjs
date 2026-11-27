@@ -30,13 +30,15 @@ assert.equal(prayerBannerText('george', 'en'), 'St George is with you!');
 assert.equal(prayerBannerText('jesus', 'el'), 'Ο Χριστός είναι μαζί σου!');
 assert.equal(prayerBannerText('mary', 'el'), 'Η Παναγία είναι μαζί σου!');
 assert.equal(prayerBannerText('george', 'el'), 'Ο Άγιος Γεώργιος είναι μαζί σου!');
+assert.equal(prayerBannerText('phanourios', 'en'), 'St Phanourios is with you!');
+assert.equal(prayerBannerText('phanourios', 'el'), 'Ο Άγιος Φανούριος είναι μαζί σου!');
 
 // Idle human prayer caption copy (EN/EL, off->browser fallback, device hints, <=430px shortening, null for AI).
 assert.deepEqual(prayerIdleCaption('keyboard', 'en'), { title: 'Pray to receive a blessing', hint: 'hold R' });
-assert.deepEqual(prayerIdleCaption('gamepad', 'en'), { title: 'Pray to receive a blessing', hint: 'hold right stick ◀ / ▲ / ▶' });
+assert.deepEqual(prayerIdleCaption('gamepad', 'en'), { title: 'Pray to receive a blessing', hint: 'hold right stick ◀ / ▲ / ▶ / ▼' });
 assert.deepEqual(prayerIdleCaption('touch', 'en'), { title: 'Pray to receive a blessing', hint: 'hold Pray' });
 assert.deepEqual(prayerIdleCaption('keyboard', 'el'), { title: 'Προσευχήσου για να λάβεις ευλογία', hint: 'κράτα R' });
-assert.deepEqual(prayerIdleCaption('gamepad', 'el'), { title: 'Προσευχήσου για να λάβεις ευλογία', hint: 'κράτα δεξί μοχλό ◀ / ▲ / ▶' });
+assert.deepEqual(prayerIdleCaption('gamepad', 'el'), { title: 'Προσευχήσου για να λάβεις ευλογία', hint: 'κράτα δεξί μοχλό ◀ / ▲ / ▶ / ▼' });
 assert.deepEqual(prayerIdleCaption('touch', 'el'), { title: 'Προσευχήσου για να λάβεις ευλογία', hint: 'κράτα Προσευχή' });
 assert.deepEqual(prayerIdleCaption('touch', 'en', { narrow: true }), { title: 'Pray for a blessing', hint: 'hold Pray' });
 assert.deepEqual(prayerIdleCaption('touch', 'el', { narrow: true }), { title: 'Προσευχή για ευλογία', hint: 'κράτα Προσευχή' });
@@ -46,12 +48,12 @@ assert.equal(prayerIdleCaption(null, 'en'), null);
 
 // Shipped holy icon WebP size check (<= 250 KB each).
 const uiRoot = resolve(import.meta.dirname, '../assets/ui');
-for (const icon of ['icon_christ.webp', 'icon_mary.webp', 'icon_george.webp']) {
+for (const icon of ['icon_christ.webp', 'icon_mary.webp', 'icon_george.webp', 'icon_phanourios.webp']) {
   const sz = statSync(resolve(uiRoot, icon)).size;
   assert.ok(sz > 4000 && sz <= 250 * 1024, `${icon} size ${sz} B must be <= 250 KB`);
 }
 
-// 2. Shipped MP3 inventory integrity & < 3 MB per language cap (all 68 EN + 68 EL clips shipped).
+// 2. Shipped MP3 inventory integrity & < 3 MB per language cap (all 79 EN + 79 EL clips shipped).
 const audioRoot = resolve(import.meta.dirname, '../assets/narration');
 for (const lang of ['en', 'el']) {
   const dir = resolve(audioRoot, lang);
@@ -68,7 +70,7 @@ for (const lang of ['en', 'el']) {
     else if (val && typeof val === 'object') Object.values(val).forEach((id) => catalogIds.add(id));
   }
   assert.equal(catalogIds.size, files.length, `${lang}: catalog count (${catalogIds.size}) matches shipped files (${files.length})`);
-  assert.equal(files.length, 68, `${lang}: expected 68 shipped clips`);
+  assert.equal(files.length, 79, `${lang}: expected 79 shipped clips`);
   for (const id of catalogIds) {
     assert.ok(files.includes(`${id}.mp3`), `${lang}: missing shipped file for ${id}`);
     assert.equal(clipUrl(lang, id), `assets/narration/${lang}/${id}.mp3`);
@@ -78,6 +80,10 @@ assert.ok(NARRATION_CLIPS.el.kickoff.includes('kickoff_3'));
 assert.ok(NARRATION_CLIPS.el.fulltime_draw.includes('fulltime_draw_3'));
 
 // Helper harness for deterministic queue / priority / cooldown / ducking / no-overlap testing.
+function audioFileExists(lang, id) {
+  return readdirSync(resolve(audioRoot, lang)).includes(`${id}.mp3`);
+}
+
 function makeHarness({ lang = 'en', enabled = true, random = () => 0, catalog = NARRATION_CLIPS } = {}) {
   let t = 0;
   let activeCount = 0;
@@ -235,6 +241,39 @@ function makeHarness({ lang = 'en', enabled = true, random = () => 0, catalog = 
   }
   assert.equal(seenJesus.size, 4, `all 4 Jesus prayer clips rotated: ${[...seenJesus]}`);
   assert.equal(seenMary.size, 4, `all 4 Mary prayer clips rotated: ${[...seenMary]}`);
+}
+
+// 3c. Every blessing speaks from its own bucket (St George never borrows Jesus' lines), St Phanourios'
+// find has its own event, and buckets whose clips haven't shipped yet stay silent instead of fetching 404s.
+{
+  const catalog = {
+    en: {
+      ...NARRATION_CLIPS.en,
+      prayer_george: ['prayer_with_george', 'prayer_george_1'],
+      prayer_phanourios: ['prayer_with_phanourios', 'prayer_phanourios_1'],
+      phanourios_find: ['phanourios_find_1'],
+    },
+  };
+  const h = makeHarness({ lang: 'en', catalog });
+  for (const kind of ['george', 'phanourios']) {
+    h.engine.handleEvents([{ type: 'prayer', team: 0, kind }], {});
+    assert.ok(catalog.en['prayer_' + kind].includes(h.played.at(-1).clipId), `${kind} plays its own line (${h.played.at(-1).clipId})`);
+    h.advance(1.0); h.finish(); h.advance(5.0);
+  }
+  h.engine.handleEvents([{ type: 'phanourios_find', team: 0 }], {});
+  assert.equal(h.played.at(-1).clipId, 'phanourios_find_1');
+  assert.equal(h.played.at(-1).category, 'phanourios_find');
+
+  // The shipped catalog: lines still being recorded are filtered out, so these events play nothing.
+  for (const lang of ['en', 'el']) {
+    for (const bucket of ['prayer_george', 'prayer_phanourios', 'phanourios_find']) {
+      assert.ok(Array.isArray(NARRATION_CLIPS[lang][bucket]), `${lang}.${bucket} bucket exists`);
+    }
+  }
+  const quiet = makeHarness({ lang: 'en' });
+  quiet.engine.handleEvents([{ type: 'prayer', team: 0, kind: 'george' }], {});
+  quiet.engine.handleEvents([{ type: 'phanourios_find', team: 0 }], {});
+  for (const c of quiet.played) assert.ok(audioFileExists('en', c.clipId), `only shipped clips play (${c.clipId})`);
 }
 
 // 4. Cooldowns, low-priority spacing, and stale pending drop.

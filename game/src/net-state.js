@@ -3,12 +3,12 @@ import { teamStats } from './stats.js';
 
 export const ACTIONS = ['passPressed', 'shootPressed', 'shootReleased', 'switchPressed', 'switchToAim',
   'throughPressed', 'oneTwoPressed', 'chipReleased', 'knockOnPressed', 'pressPressed', 'pausePressed',
-  'prayerJesus', 'prayerMary', 'prayerGeorge'];
+  'prayerJesus', 'prayerMary', 'prayerGeorge', 'prayerPhanourios'];
 const HELD = ['sprint', 'shootHeld', 'prayerHeld', 'autoRun'];
 const flags = [...HELD, ...ACTIONS];
 const anims = ['idle', 'run', 'sprint', 'pass', 'kick', 'tackle', 'stunned', 'dive', 'celebrate', 'catch', 'parry', 'slide', 'header', 'chest'];
 const kinds = [null, 'pass', 'shot', 'through', 'lofted', 'clear', 'onetwo', 'knock', 'chip', 'head', 'chest', 'catch', 'parry', 'dive', 'slide'];
-const prayerKinds = [null, 'jesus', 'mary', 'george'];
+const prayerKinds = [null, 'jesus', 'mary', 'george', 'phanourios'];
 const statKeys = Object.keys(teamStats());
 const ms = seconds => Math.round(seconds * 1000);
 const cm = metres => Math.round(metres * 100);
@@ -55,7 +55,7 @@ export function packState(m, presentation) {
       ms(Math.max(0, pr.timeLeft ?? 0)),
       pr.active === 'george' ? (pr.riderSlot ?? -1) : -1,
     ]),
-    ball: [cm(b.pos.x), cm(b.pos.y), cm(b.pos.z), cm(b.vel.x), cm(b.vel.y), cm(b.vel.z), slot(b.owner), (b.shot?.jesus ? 1 : 0) | (b.inNet ? 2 : 0)],
+    ball: [cm(b.pos.x), cm(b.pos.y), cm(b.pos.z), cm(b.vel.x), cm(b.vel.y), cm(b.vel.z), slot(b.owner), (b.shot?.jesus ? 1 : 0) | (b.inNet ? 2 : 0) | (b.foundBy === 0 ? 4 : b.foundBy === 1 ? 8 : 0)],
     actors: [...m.players, m.referee].map(actor),
     stats: m.stats.map(team => statKeys.map(k => k === 'possession' ? ms(team[k]) : team[k])),
   };
@@ -69,8 +69,8 @@ export function validState(s) {
     && numbers(s.score, 2) && s.score.every(n => n >= 0)
     && tuple(s.humans, 2) && s.humans.every((n, t) => n === -1 || int(n, t * players / 2, (t + 1) * players / 2 - 1))
     && tuple(s.charge, 2) && s.charge.every(n => int(n, -1, 255))
-    && tuple(s.prayers, 2) && s.prayers.every(p => tuple(p, 6) && int(p[0], 0, 2) && int(p[1], 0, 255) && int(p[2], 0, 1) && int(p[3], 0, 3) && int(p[4], 0, 15000) && int(p[5], -1, players - 1))
-    && numbers(s.ball, 8) && int(s.ball[6], -1, players - 1) && int(s.ball[7], 0, 3)
+    && tuple(s.prayers, 2) && s.prayers.every(p => tuple(p, 6) && int(p[0], 0, 2) && int(p[1], 0, 255) && int(p[2], 0, 1) && int(p[3], 0, prayerKinds.length - 1) && int(p[4], 0, 15000) && int(p[5], -1, players - 1))
+    && numbers(s.ball, 8) && int(s.ball[6], -1, players - 1) && int(s.ball[7], 0, 15) && (s.ball[7] & 12) !== 12
     && s.actors.every(a => numbers(a, 12) && int(a[5], 0, anims.length - 1) && int(a[6], 0, kinds.length - 1) && int(a[8], 0, 255))
     && tuple(s.stats, 2) && s.stats.every(a => numbers(a, statKeys.length));
 }
@@ -109,6 +109,7 @@ export function applyState(m, left, right, alpha) {
   m.ball.owner = m.players[left.ball[6]] ?? null;
   const ballFlags = left.ball[7] ?? 0;
   m.ball.inNet = Boolean(ballFlags & 2);
+  m.ball.foundBy = ballFlags & 4 ? 0 : ballFlags & 8 ? 1 : null;
   if (ballFlags & 1) {
     if (!m.ball.shot?.jesus) m.ball.shot = { jesus: true, team: 0 };
   } else {
